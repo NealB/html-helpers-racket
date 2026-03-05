@@ -82,7 +82,6 @@
 
     (cond
       [(eq? (car facets1) '&) (list facets1)]
-      ;[(eq? (car facets1) 'if_ ) (list facets1)]
       [else
        (let*
            ((facets facets1)
@@ -94,8 +93,6 @@
             (childrenOrFalse (and~> facets
                                     (gatherChildren '())
                                     (false-if-not pair?)))
-            
-            ;(withAtts (if sxmlAttributeList (list tag sxmlAttributeList) (list tag)))
             
             (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
             
@@ -349,6 +346,7 @@
 (define (renderHtmlElement node )
   
   (match node
+    ((? string? s) (list s))
     ((list 'RawHtml s) (list s))
     
     ((list 'if pred body1 body2)

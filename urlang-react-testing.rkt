@@ -60,12 +60,12 @@
                                                    (onClick on-button-click)
                                                    (style button-style)
                                                    (if show-form
-                                                       (RawHtml "Hide address")
-                                                       (RawHtml "Show address"))))
+                                                       "Hide address"
+                                                       "Show address")))
          
                             (render-html-elements (span (Children
                                                          (button
-                                                          (className "btn btn-secondary")
+                                                          .btn.btn-secondary
                                                           (onClick on-button2-click)
                                                           "Add 1")
                                                          (RawHtml (+ "Count: " count)))))
@@ -85,7 +85,7 @@
                                    (.form-group .col-md-6
                                                 (label (for "inputPassword4") "Password")
                                                 (input.form-control#inputPassword4
-                                                 (type "password")
+                                                 :password
                                                  (placeholder "Password"))))
               
                                   (if show-form (.form-group
