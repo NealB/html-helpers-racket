@@ -79,6 +79,7 @@
                      
                                                 (input:email
                                                  .form-control#inputEmail4
+                                                 required
                                                  (placeholder "Email")))
                
                                    (.form-group .col-md-6
@@ -121,7 +122,7 @@
               
                                    (.form-group
                                     (.form-check
-                                     (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck"))
+                                     (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck") checked)
                                      (label.form-check-label
                                       (for "gridCheck")
                                       "        Check me out\n"))))

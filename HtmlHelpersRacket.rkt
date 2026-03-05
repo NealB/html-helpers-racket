@@ -92,7 +92,7 @@
                          
             (htmlContentOrFalse (assoc 'HtmlContent facets))
             (childrenOrFalse (and~> facets
-                                    gatherChildren
+                                    (gatherChildren '())
                                     (false-if-not pair?)))
             
             ;(withAtts (if sxmlAttributeList (list tag sxmlAttributeList) (list tag)))
@@ -151,14 +151,17 @@
       ((regexp #px"^[:$]") `(,(string->symbol (format "input~a" tag)) ,@(cdr node)))
       (_ node)))
 
-
 (define (rewriteAbbrevAttrFacets node)
   (for/list ((node-elem node)
              (index (in-naturals 0)))
-    (cond
-      [(= index 0) node-elem]
-      [(symbol? node-elem) (list 'AbbrevAttrString (~a node-elem))]
-      [else node-elem])))
+    (match node-elem
+      [_ #:when (= index 0) node-elem]
+      ['checked `(CheckedProperty #t)]
+      ['required `(RequiredProperty #t)]
+      ['selected `(SelectedProperty #t)]
+      [(? symbol?)
+       (list 'AbbrevAttrString (~a node-elem))]
+      [_ node-elem])))
 
 
 (define (rewriteStringFacets node)
@@ -179,33 +182,33 @@
         
 
 
-(define (gatherChildren facets)
+(define (gatherChildren facets child-acc) ;(child-acc '()))
   
-  (loop next ((remaining-facets facets) (child-acc '() #:inherit))
+  ;(loop next ((remaining-facets facets) (child-acc '() #:inherit))
         
-        (if (null? remaining-facets)
-            (and (not (null? child-acc)) `(Children ,@(reverse child-acc)))
+  (if (null? facets)
+      (and (not (null? child-acc)) `(Children ,@(reverse child-acc)))
         
-            (local
-              ((match-define (list facets-head facets-tail ...) remaining-facets)
+      (local
+        ((match-define (list facets-head facets-tail ...) facets)
            
-               (define (--> . replacement-facets) (next `(,@replacement-facets ,@facets-tail)))
-               (define (continue) (next facets-tail)))
+         (define (--> . replacement-facets) (gatherChildren `(,@replacement-facets ,@facets-tail) child-acc))
+         (define (continue) (gatherChildren facets-tail child-acc)))
 
-              (match facets-head
-                ((list 'if pred body1 body2)                         (next facets-tail #:child-acc (cons facets-head child-acc)))
+        (match facets-head
+          ((list 'if pred body1 body2)                         (gatherChildren facets-tail (cons facets-head child-acc)))
 
-                ((list (? html_element_tag?) _ ...)                  (next (cons `(Children ,facets-head) facets-tail)))
+          ((list (? html_element_tag?) _ ...)                  (gatherChildren (cons `(Children ,facets-head) facets-tail) child-acc))
 
-                ((list 'Children child)                               (next facets-tail #:child-acc (cons child child-acc)))
+          ((list 'Children child)                              (gatherChildren facets-tail (cons child child-acc)))
                 
-                ((list 'Elements elements ...)                       (--> `(Children ,@elements)))
+          ((list 'Elements elements ...)                       (--> `(Children ,@elements)))
 
-                ((list 'Children first-child rest-of-children ...)   (--> `(Children ,first-child) `(Children ,@rest-of-children)))
+          ((list 'Children first-child rest-of-children ...)   (--> `(Children ,first-child) `(Children ,@rest-of-children)))
             
-                ((and (list 'Element _ ...) element)                 (next facets-tail #:child-acc (cons element child-acc)))
+          ((and (list 'Element _ ...) element)                 (gatherChildren facets-tail (cons element child-acc)))
 
-                (_                                                    (continue)))))))
+          (_                                                   (continue))))))
 
 
 
