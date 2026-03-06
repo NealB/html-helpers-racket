@@ -74,7 +74,38 @@
               ("$" (loop next-offset (cons `(name ,suffix) acc)))
               (":" (loop next-offset (cons `(type ,suffix) acc)))
               ))))))
-       
+
+
+(define (generateSxmlAttributeList facets)
+
+  (define simpleAttributeList (rewriteAttributes facets))
+  
+  (define (to-sxml-atts grps)
+    (and (or (not (null? grps)) (include-empty-atts?))
+         (if (attr-prepend)
+             (cons (attr-prepend) grps)
+             grps)))
+  
+  (define att-name-values
+    (for/list ([att simpleAttributeList]
+               #:when (and (pair? att) (eq? (car att) 'ExplicitAttribute))
+               #:do ((define name (second att)))
+               #:do ((define name-symbol (if (string? name) (string->symbol name) name)))
+               #:do ((define value (third att))))
+      (list name-symbol value)))
+
+  (define result-atts
+    (for/list ([grp (group-by first att-name-values)]
+               #:do ((define attname (caar grp))))
+      
+      (list
+       attname
+       (if (or (eq? attname 'class) (eq? attname 'className))
+           (apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp)))
+           (second (first grp))))))
+
+  (to-sxml-atts result-atts))
+
 (define (sxmlFromSimpleFacets facets0)
   
   (let* ((facets1 (rewriteStringFacets facets0))
@@ -93,7 +124,7 @@
             (childrenOrFalse (and~> facets
                                     (gatherChildren '())
                                     (false-if-not pair?)))
-            
+             
             (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
             
             (withContent (cond 
@@ -124,11 +155,10 @@
     ((list 'Element atts ...)                `(#:Finished ,@atts))
     ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
     ((list '& atts ...)                      `(#:Finished `& ,@atts))
-    ;((list '_if pred body1 body2)             `(#:Finished _if ,pred ,(rewriteElement body1) ,(rewriteElement body2)))
   
     ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
     ((list 'Option value text)                `(option (value ,value) ,text))
-    ((list 'Input/Text atts ...)             `(input (type "text") ,@atts))
+    ;((list 'Input/Text atts ...)             `(input (type "text") ,@atts))
 
     ((list
       (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
@@ -181,7 +211,6 @@
 
 (define (gatherChildren facets child-acc) ;(child-acc '()))
   
-  ;(loop next ((remaining-facets facets) (child-acc '() #:inherit))
         
   (if (null? facets)
       (and (not (null? child-acc)) `(Children ,@(reverse child-acc)))
@@ -249,21 +278,7 @@
             ((list 'ClassAttribute s tail ...)               (--> `(ClassAttribute ,s) `(ClassAttribute ,@tail)))
             
             ((list 'for tail ...)                            (--> `(ExplicitAttribute ,for-attr-name ,@tail)))
-              
-            ;((list 'style tail ...)                          (--> `(StyleAttribute ,@tail)))
 
-            ;((list 'StyleAttribute (? string? s))
-            ; #:when (string-contains? s ";")
-            ; #:do ((define style-list (string-split s #px"\\s*(;\\s*)+")))
-            ;                                                  (--> `(StyleAttribute ,@style-list)))
-
-            ;((list 'StyleAttribute (? string? s))
-            ; #:do ((define normalized
-            ;         (string-normalize-spaces s #px"\\s*(;\\s*)+" "; ")))
-            ;                                                  (if (non-empty-string? normalized) (--> `(ExplicitAttribute style ,normalized)) (next)))
-              
-            ;((list 'StyleAttribute s tail ...)               (--> `(StyleAttribute ,s) `(StyleAttribute ,@tail)))
-              
             ((list 'Attributes (list (? string? name) value)) (--> `(ExplicitAttribute ,(string->symbol name) ,value)))
             ((list 'Attributes (list (? symbol? name) value)) (--> `(ExplicitAttribute ,name ,value)))
             ((list 'Attributes (list name value) tail ...)   (--> `(Attributes (,name ,value)) `(Attributes ,@tail)))
@@ -293,37 +308,7 @@
             ((var passThru)                               (loop attrs-tail (cons passThru explicit-attrs))))))))
 
 
-(define (generateSxmlAttributeList facets)
-  "Group like attributes and concatenate them"
 
-  (define simpleAttributeList (rewriteAttributes facets))
-  
-  (define (to-sxml-atts grps)
-    (and (or (not (null? grps)) (include-empty-atts?))
-         (if (attr-prepend)
-             (cons (attr-prepend) grps)
-             grps)))
-  
-  (define att-name-values
-    (for/list ([att simpleAttributeList]
-               #:when (and (pair? att) (eq? (car att) 'ExplicitAttribute))
-               #:do ((define name (second att)))
-               #:do ((define name-symbol (if (string? name) (string->symbol name) name)))
-               #:do ((define value (third att))))
-      (list name-symbol value)))
-
-  (define result-atts
-    (for/list ([grp (group-by first att-name-values)]
-               #:do ((define attname (caar grp))))
-               ;#:do ((define attvalue (apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp))))))
-      
-      (list
-       attname
-       (if (or #| (eq? attname 'style) |# (eq? attname 'class) (eq? attname 'className))
-           (apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp)))
-           (second (first grp))))))
-
-  (to-sxml-atts result-atts))
 
 (define (ensure-symbol s)
   (if (string? s)
