@@ -123,7 +123,7 @@
                     
                                        (.form-group
                                         (.form-check
-                                         (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck") checked)
+                                         (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck") (defaultChecked))
                                          (label.form-check-label
                                           (for "gridCheck")
                                           "        Check me out\n"))))
@@ -137,6 +137,6 @@
 ;          @p{You have clicked @ur[count] times at the button.}
 ;          @button[onClick: @ur[on-button-click]]{Click me}}]))));
 
-;(require net/sendurl)
+(require net/sendurl)
 
 ;(send-url/file "react-playing.html")
