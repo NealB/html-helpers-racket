@@ -76,6 +76,9 @@
               ))))))
 
 
+;;
+;; generateSxmlAttributeList
+;;
 (define (generateSxmlAttributeList facets)
 
   (define simpleAttributeList (rewriteAttributes facets))
@@ -106,6 +109,11 @@
 
   (to-sxml-atts result-atts))
 
+
+
+;;
+;; sxmlFromSimpleFacets
+;;
 (define (sxmlFromSimpleFacets facets0)
   
   (let* ((facets1 (rewriteStringFacets facets0))
@@ -120,7 +128,8 @@
                          
             (tag (and~> (assoc 'Tag facets) second ensure-symbol))
                          
-            (htmlContentOrFalse (assoc 'HtmlContent facets))
+            ;(htmlContentOrFalse (assoc 'HtmlContent facets))
+            
             (childrenOrFalse (and~> facets
                                     (gatherChildren '())
                                     (false-if-not pair?)))
@@ -128,7 +137,7 @@
             (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
             
             (withContent (cond 
-                           (htmlContentOrFalse (append withAtts (list (second htmlContentOrFalse))))
+                           ;(htmlContentOrFalse (append withAtts (list (second htmlContentOrFalse))))
                            (childrenOrFalse (append withAtts (renderHtmlElements (cdr childrenOrFalse))))
                            (else withAtts))))
 
@@ -196,6 +205,8 @@
          (if (string? facet) `(HtmlContent ,facet) facet))
        node))
 
+
+
 (define (rewriteElement node0)
   (define node (~> node0 fillDefaultTag rewriteAbbrevAttrFacets))
   
@@ -205,8 +216,7 @@
     (cond
       [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
       [rewritten (loop rewritten)]
-      [else #f])))
-        
+      [else (printf "node0:~n") (pretty-print node0) (printf "node-iteration:~n") (pretty-print node-iteration) (printf "rewritten:~n") (pretty-print rewritten) (raise "what happened?~n")])))
 
 
 (define (gatherChildren facets child-acc) ;(child-acc '()))
@@ -223,32 +233,30 @@
 
         (match facets-head
           ((list 'if pred body1 body2)                         (gatherChildren facets-tail (cons facets-head child-acc)))
-
           ((list (? html_element_tag?) _ ...)                  (gatherChildren (cons `(Children ,facets-head) facets-tail) child-acc))
-
           ((list 'Children child)                              (gatherChildren facets-tail (cons child child-acc)))
-                
           ((list 'Elements elements ...)                       (--> `(Children ,@elements)))
-
           ((list 'Children first-child rest-of-children ...)   (--> `(Children ,first-child) `(Children ,@rest-of-children)))
-            
           ((and (list 'Element _ ...) element)                 (gatherChildren facets-tail (cons element child-acc)))
 
+          ((? string?)                                         (--> `(HtmlContent  ,facets-head)))
+          ((list 'HtmlContent html)                            (gatherChildren facets-tail (cons facets-head child-acc)))
+          ((list 'Stylesheet _ ...)                            (gatherChildren facets-tail (cons facets-head child-acc)))
           (_                                                   (continue))))))
 
 
+(define class-attr-name
+  (if (eq? (output-type) 'react)
+      'className
+      'class))
+  
+(define for-attr-name
+  (if (eq? (output-type) 'react)
+      'htmlFor
+      'for))
+
 
 (define (rewriteAttributes htmlAttributes)
-
-  (define class-attr-name
-    (if (eq? (output-type) 'react)
-        'className
-        'class))
-  
-  (define for-attr-name
-    (if (eq? (output-type) 'react)
-        'htmlFor
-        'for))
 
 
   (let loop ((remaining-htmlAttributes htmlAttributes) (explicit-attrs '()))
@@ -258,13 +266,13 @@
 
         (local
           ((match-define (list-rest attrs-head attrs-tail) remaining-htmlAttributes)
-               
+
            (define (--> . replacement-attributes)
              (loop (append replacement-attributes attrs-tail) explicit-attrs))
 
            (define (next)
              (loop attrs-tail explicit-attrs)))
-     
+
           (match attrs-head
             ((or #f '())                                      (next))
             
@@ -294,9 +302,9 @@
             (`(HeightProperty ,w)                         (--> `(StyleAttribute ,(format "height: ~Apx" w))))
             (`(MinHeightProperty ,w)                      (--> `(StyleAttribute ,(format "min-height: ~Apx" w))))
             (`(MaxHeightProperty ,w)                      (--> `(StyleAttribute ,(format "max-height: ~Apx" w))))
-            
-            ((and (? rewriteElement) passThru)            (loop attrs-tail (cons passThru explicit-attrs)))
 
+            ((list (? html_element_tag?) _ ...)           (next))
+            
             ((list (? lower-case-symbol? sym))            (--> `(ExplicitAttribute ,sym ,(~a sym))))
        
             ((list (? lower-case-symbol? sym) s)          (--> `(ExplicitAttribute ,sym ,s))) ; if the initial symbol is lowercase, treat it as an attribute with that name
@@ -305,7 +313,12 @@
              #:do ((define tag-class-id-split (split-attribute-short-strings str)))
                                                           (apply --> tag-class-id-split))
             
-            ((var passThru)                               (loop attrs-tail (cons passThru explicit-attrs))))))))
+            ;((and (? rewriteElement) passThru)            (loop attrs-tail (cons passThru explicit-attrs)))
+
+            (_                                            (next)))))))
+
+
+            ;((var passThru)                               (loop attrs-tail (cons passThru explicit-attrs))))))))
 
 
 
@@ -329,10 +342,10 @@
 
 
 (define (renderHtmlElement node )
-  
+
   (match node
     ((? string? s) (list s))
-    ((list 'RawHtml s) (list s))
+    ((list 'HtmlContent s) (list s))
     
     ((list 'if pred body1 body2)
      `((if ,pred ,(car (renderHtmlElement body1)) ,(car (renderHtmlElement body2)))))
@@ -340,14 +353,15 @@
      
     (_ (~> node rewriteElement sxmlFromSimpleFacets))))
 
-(define (renderHtmlElements nodes )
-  (if (symbol? (first nodes))
+
+(define (renderHtmlElements nodes)
+  ;(if (symbol? (first nodes))
       
-      (renderHtmlElement nodes )
+  ;    (renderHtmlElement nodes )
       
-      (~>> nodes
-           (filter (λ (el) (and el (not (null? el)) (pair? el))))
-           (append-map (λ (el) (renderHtmlElement el))))))
+      ;(~>> nodes
+      ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
+           (append-map (λ (el) (renderHtmlElement el)) nodes))
 
 
 
@@ -356,6 +370,92 @@
    `(React.createElement ,(~a (car el)) ,@(cdr el))))
 
 
-(provide renderHtmlElements renderHtmlElement attr-prepend include-empty-atts? alter-element-fn output-type)
+(provide #| renderHtmlElements |# renderHtmlElement attr-prepend include-empty-atts? alter-element-fn output-type)
 
+
+
+(renderHtmlElement '(div.container
+                              (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css")
+                                                                 (integrity "sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N")
+                                                              (crossOrigin "anonymous")) 
+         
+                            (button.am-i-insane
+                                (class "btn btn-success")
+                                (onClick on-button-click)
+                                (style button-style)
+                                (if show-form
+                                    "Hide address"
+                                 "Show address"))
+         
+                            (span (HtmlContent "(+ \"Count: \" count)"))
+                              
+                            (button
+                                   .btn.btn-secondary
+                                   (onClick on-button2-click)
+                                "Add 1")
+
+                               ;(render-html-element 
+                                (form
+                                   (.form-row
+                           
+                                    (.form-group .col-md-6
+                                                 (label (for "inputEmail4") "Email")
+                           
+                                                 (input:email
+                                                  .form-control#inputEmail4
+                                                  required
+                                                  (placeholder "Email")))
+                     
+                                    (.form-group .col-md-6
+                                                 (label (for "inputPassword4") "Password")
+                                                 (input.form-control#inputPassword4
+                                                  :password
+                                                  (placeholder "Password"))))
+                    
+                                   (if show-form (.form-group
+                                                  (label (for "inputAddress") "Address")
+                                                  (input:text
+                                                   $inputAddress.form-control#inputAddress
+                                                   (placeholder "1234 Main St")))
+                                       (hr))
+                    
+                                   (.form-group
+                                    (label (for "inputAddress2") "Address 2")
+                                    (input:text
+                                     (AbbrevAttrString ".form-control #inputAddress2")
+                                     (placeholder "Apartment, studio, or floor")))
+                    
+                                   (.form-row
+                                    (.form-group .col-md-6
+                                                 (label (for "inputCity") "City")
+                                                 (:text
+                                                  (AbbrevAttrString "#inputCity .form-control $inputCity")))
+                     
+                                    (.form-group .col-md-4
+                                                 (label (for "inputState") "State")
+                                                 (select
+                                                  (defaultValue "Choose...")
+                                                  (AbbrevAttrString ".form-control #inputState $inputState")
+                                                  (option "Choose...")
+                                                  (option "...")))
+                     
+                                    (.form-group .col-md-2
+                                                 (label (for "inputZip") "Zip")
+                                                 (BS/TextBox
+                                                  (AbbrevAttrString "#inputZip $inputZip")))
+                    
+                                    (.form-group
+                                     (.form-check
+                                      (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck") checked)
+                                      (label.form-check-label
+                                       (for "gridCheck")
+                                       "        Check me out\n"))))
+                    
+                                   (button.btn.btn-primary
+                                    (type "submit")
+                              "Sign in"))))
+
+(require net/sendurl)
+
+;(send-url/file "react-playing.html")
 

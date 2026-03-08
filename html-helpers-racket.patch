@@ -1,0 +1,86 @@
+diff --git a/HtmlHelpersRacket.rkt b/HtmlHelpersRacket.rkt
+index 15a6e48..1c7ee56 100644
+--- a/HtmlHelpersRacket.rkt
++++ b/HtmlHelpersRacket.rkt
+@@ -129,7 +129,7 @@
+             
+             (withContent (cond 
+                            (htmlContentOrFalse (append withAtts (list (second htmlContentOrFalse))))
+-                           (childrenOrFalse (append withAtts (renderHtmlElements (cdr childrenOrFalse))))
++                           (childrenOrFalse (append withAtts (apply renderHtmlElements (cdr childrenOrFalse))))
+                            (else withAtts))))
+ 
+ 
+@@ -340,14 +340,14 @@
+      
+     (_ (~> node rewriteElement sxmlFromSimpleFacets))))
+ 
+-(define (renderHtmlElements nodes )
+-  (if (symbol? (first nodes))
++(define (renderHtmlElements . nodes)
++  ;(if (symbol? (first nodes))
+       
+-      (renderHtmlElement nodes )
++  ;    (renderHtmlElement nodes )
+       
+-      (~>> nodes
+-           (filter (λ (el) (and el (not (null? el)) (pair? el))))
+-           (append-map (λ (el) (renderHtmlElement el))))))
++      ;(~>> nodes
++      ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
++           (append-map (λ (el) (renderHtmlElement el)) nodes))
+ 
+ 
+ 
+diff --git a/urlang-react-testing.rkt b/urlang-react-testing.rkt
+index f176d10..af0d557 100644
+--- a/urlang-react-testing.rkt
++++ b/urlang-react-testing.rkt
+@@ -25,16 +25,23 @@
+                      (include-empty-atts? #t)
+                      (alter-element-fn (λ (el) `(React.createElement ,(~a (car el)) ,@(cdr el)))))
+         
+-        (let* ((result (first (renderHtmlElements args))))
+-          result)))
++        (apply renderHtmlElements args)))
+     
+-    (datum->syntax stx out)))
++        ;(let* ((result (first (apply renderHtmlElements args))))
++        ;  result)))
++
++    (define result
++      (if (> (length out) 1)
++          (cons 'Fragment out)
++          (first out)))
++    
++    (datum->syntax stx result)))
+ 
+ 
+ (parameterize ([current-urlang-output-file "react-example.js"])
+   (urlang
+    (urmodule exercise ; saved in exercise.js
+-     (import delete this Promise fetch Object $ React ReactDOM document document.title JSON RegExp renderHtmlElements attr-prepend include-empty-atts? alter-element-fn form-example alert quasiquote unquote unquote-splicing list div p className add1
++     (import delete this Promise fetch Object $ React ReactDOM Fragment document document.title JSON RegExp renderHtmlElements attr-prepend include-empty-atts? alter-element-fn form-example alert quasiquote unquote unquote-splicing list div p className add1
+              onClick)
+ 
+      (define (App1 props)       
+@@ -63,13 +70,12 @@
+                                                        "Hide address"
+                                                        "Show address")))
+          
+-                            (render-html-elements (span (Children
+-                                                         (button
+-                                                          .btn.btn-secondary
+-                                                          (onClick on-button2-click)
+-                                                          "Add 1")
+-                                                         (RawHtml (+ "Count: " count)))))
+-         
++                            (render-html-elements (button
++                                                   .btn.btn-secondary
++                                                   (onClick on-button2-click)
++                                                   "Add 1")
++                                                  (RawHtml (+ "Count: " count)))
++                            
+                             (render-html-elements 
+                                  (form
+                                   (.form-row
