@@ -1,6 +1,31 @@
-#lang racket
-(require racket/match racket/list racket/string racket/format threading sxml racket/pretty html-printer net/cgi racket/function racket/local loop)
-;(require (prefix-in pprint: pprint))
+#lang webracket
+;;;
+;;; Hello World 3
+;;;
+;;; This variant uses SXML to describe the DOM tree and then converts
+;;; it with sxml->dom, avoiding direct js-create-element calls.
+
+;; Build a dom node with a small hello message.
+#| (define content
+     (sxml->dom
+      '(div
+         (h1 "Hello, WebRacket!")
+      (p "This page was compiled from Racket to WebAssembly.")))) |#
+
+
+;; Get the (empty) body node and our message.
+;(define body (js-document-body))
+;(js-append-child! body content)
+
+;; Use the JavaScript Console for debugging.
+;(js-log "Hello!")
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(define make-parameter (λ (x) x))
 
 (define attr-prepend (make-parameter 'object))
 (define include-empty-atts? (make-parameter #t))
@@ -10,16 +35,18 @@
 (define html_elements '(a abbr address area article aside b base blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figure footer form h1 h2 h3 h4 h5 h6 head header hgroup
                           hr html i iframe img input ins keygen label legend li link main map menu menuitem meta nav noscript object ol optgroup option p pre script section select small span strong sub sup table tbody td template textarea tfoot th thead title tr ul
                           Stylesheet Option ))
-(define html_element_set
-  (delay (list->set html_elements)))
+;(define html_element_set (list->set html_elements))
+  ;(delay (list->set html_elements)))
+
+(define (~a sym) (symbol->string sym))
 
 (define (html_element_tag? tag)
   (or
-   (set-member? (force html_element_set) tag)
+   (member tag html_elements)
    (and
     (symbol? tag)
     (or
-     (set-member? (force html_element_set) (first (split-attribute-short-strings tag)))
+     (member (first (split-attribute-short-strings tag)) html_elements)
      (string-prefix? (~a tag) "#")
      (string-prefix? (~a tag) ".")
      (string-prefix? (~a tag) ":")
@@ -33,42 +60,98 @@
 ;  (eval sym html-helper-macro-ns))
 
 (define (lower-case-symbol? sym)
-  (and (symbol? sym) (~> sym ~a (string-ref 0) char-lower-case?)))
+  (and (symbol? sym)
+       ;(~> sym ~a (string-ref 0) char-lower-case?)))
+       (let* ((str (~a sym))
+              (firstchar (string-ref str 0)))
+         (char-lower-case? firstchar))))
+              
 
 
 
 (define (split-by-slash sym)
-  (~> sym
-      ~a
-      (string-split "/")))
+  ;(~> sym
+  ;    ~a
+      (string-split (~a sym) "/"))
 
 (define (split-by-bang sym)
-  (~> sym
-      ~a
-      (string-split "!")))
+  ;(~> sym
+  ;    ~a
+      (string-split (~a sym) "!"))
+
+(define (get-special-prefix str)
+  (define char-list (string->list str))
+  (define first-char (car char-list))
+  (define (char-special? c) (member c '(#\. #\# #\$ #\:)))
+  (define first-char-special? (char-special? first-char))
+
+  (let loop ((list-remaining (cdr char-list)) (acc `(,first-char)))
+    (if (or (null? list-remaining) (char-special? (car list-remaining)))
+        (values (list->string (reverse acc)) (substring str (length acc)))
+        (loop (cdr list-remaining) (cons (car list-remaining) acc)))))
 
 
 (define (split-attribute-short-strings sym-or-str)
   (define str
     (if (symbol? sym-or-str)
-        (~> sym-or-str ~a)
-        (~> sym-or-str (string-replace " " "" #:all? #t))))
+        (~a sym-or-str)
+        (string-replace sym-or-str " " "" #:all? #t)))
 
-  (let loop ((offset 0) (acc '()))
-    (define m (regexp-match #px"(^|\\.|#|\\$|:)([^.#\\$:]+)" str offset))
-    (if (not m)
-        (reverse acc)
-        (begin
-          (match-let (((list m prefix suffix) m))
-            (define next-offset (+ offset (string-length m)))
 
-            (match prefix
-              ("" (loop next-offset (list (string->symbol suffix))))
-              ("." (loop next-offset (cons `(class ,suffix) acc)))
-              ("#" (loop next-offset (cons `(id ,suffix) acc)))
-              ("$" (loop next-offset (cons `(name ,suffix) acc)))
-              (":" (loop next-offset (cons `(type ,suffix) acc)))
-              ))))))
+
+  ;(let loop ((offset 0) (acc '()))
+  (define attr-short-strs
+    (let loop ((remaining-string str) (acc '()))
+      (if (not (string=? "" remaining-string))
+
+          (reverse acc)
+
+          (let-values
+              (((str-prefix str-suffix) (get-special-prefix remaining-string)))
+            (loop str-suffix (cons str-prefix acc))))))
+
+  (map (λ (s)
+         (match (string-ref s 0)
+           ;("" (loop next-offset (list (string->symbol suffix))))
+           (#\. `(class ,(substring s 1)))
+           (#\# `(id ,(substring s 1)))
+           (#\$ `(name ,(substring s 1)))
+           (#\: `(type ,(substring s 1)))
+           (_ (string->symbol s))))
+       attr-short-strs))
+
+    ;(define m (regexp-match #px"(^|\\.|#|\\$|:)([^.#\\$:]+)" str offset))
+
+#|     (define first-char (car char-list))
+       
+       (define (char-special? c) (member c '(#\. #\# #\$ #\:)))
+   
+       (define first-char-special? (char-special? first-char))
+   
+       (let loop ((list-remaining (cdr char-list)) (acc `(,first-char)))
+         (if (or (null? list-remaining) (char-special? (car list-remaining)))
+             (values (reverse acc) list-remaining)
+    
+          (loop (cdr list-remaining) (cons (car list-remaining) acc)))) |#
+
+    #| (cond
+         ((not first-char-special?)
+          (loop next-offset (list (string->symbol suffix))))
+         
+           (reverse acc)
+           (begin
+             (match-let (((list m prefix suffix) m))
+               
+               (local
+                 ((define next-offset (+ offset (string-length m))))
+   
+                 (match prefix
+                   ("" (loop next-offset (list (string->symbol suffix))))
+                   ("." (loop next-offset (cons `(class ,suffix) acc)))
+                   ("#" (loop next-offset (cons `(id ,suffix) acc)))
+                   ("$" (loop next-offset (cons `(name ,suffix) acc)))
+                   (":" (loop next-offset (cons `(type ,suffix) acc)))
+                ))))) |#
 
 
 ;;
@@ -453,4 +536,5 @@
 (require net/sendurl)
 
 ;(send-url/file "react-playing.html")
+
 
