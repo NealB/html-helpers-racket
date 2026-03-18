@@ -1,24 +1,14 @@
-;;#lang webracket
+;#lang racket
 ;;;
 ;;; Hello World 3
 ;;;
 ;;; This variant uses SXML to describe the DOM tree and then converts
 ;;; it with sxml->dom, avoiding direct js-create-element calls.
+ 
 
-;; Build a dom node with a small hello message.
-(define content
-  (sxml->dom
-   '(div
-      (h1 "Hello, WebRacket!")
-      (p "This page was compiled from Racket to WebAssembly."))))
+; polyfill
+;(define (js-log s) (printf "~a~n" s))
 
-
-;; Get the (empty) body node and our message.
-(define body (js-document-body))
-(js-append-child! body content)
-
-;; Use the JavaScript Console for debugging.
-(js-log "Hello!")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -30,18 +20,25 @@
 ;(define alter-element-fn (make-parameter #f))
 ;(define output-type (make-parameter 'react))
 
-(define (attr-prepend) 'object)
-(define (include-empty-atts?) #t)
+(define (attr-prepend) '@)
+(define (include-empty-atts?) #f)
 (define (alter-element-fn) #f)
-(define output-type 'react)
+(define output-type 'sxml)
 
-(define html_elements '(a abbr address area article aside b base blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figure footer form h1 h2 h3 h4 h5 h6 head header hgroup
-                          hr html i iframe img input ins keygen label legend li link main map menu menuitem meta nav noscript object ol optgroup option p pre script section select small span strong sub sup table tbody td template textarea tfoot th thead title tr ul
-                          Stylesheet Option ))
+(define html_elements
+  '(a abbr address area article aside b base blockquote body br button
+      canvas caption cite code col colgroup data datalist dd del details dfn
+      dialog div dl dt em embed fieldset figure footer form h1 h2 h3 h4 h5
+      h6 head header hgroup hr html i iframe img input ins keygen label
+      legend li link main map menu menuitem meta nav noscript object ol
+      optgroup option p pre script section select small span strong sub sup
+      table tbody td template textarea tfoot th thead title tr ul Stylesheet
+      Option))
+
 ;(define html_element_set (list->set html_elements))
 ;(delay (list->set html_elements)))
 
-(define (~a sym) (symbol->string sym))
+(define (~a x) (format "~a" x))
 
 (define (html_element_tag? tag)
   (or
@@ -99,16 +96,15 @@
     (if (symbol? sym-or-str)
         (~a sym-or-str)
         ;(string-replace sym-or-str " " "" #:all? #t)
-        (for/list ((c (string->list sym-or-str))
-                   #:when (not (eq? c #\space)))
-          c)))
-
-
+        (list->string
+         (for/list ((c (in-list (string->list sym-or-str)))
+                    #:when (not (eq? c #\space)))
+           c))))
 
   ;(let loop ((offset 0) (acc '()))
   (define attr-short-strs
     (let loop ((remaining-string str) (acc '()))
-      (if (not (string=? "" remaining-string))
+      (if (string=? "" remaining-string)
 
           (reverse acc)
 
@@ -120,9 +116,9 @@
          (match (string-ref s 0)
            ;("" (loop next-offset (list (string->symbol suffix))))
            (#\. `(class ,(substring s 1)))
-           (#\# `(id ,(substring s 1)))
-           (#\$ `(name ,(substring s 1)))
-           (#\: `(type ,(substring s 1)))
+           (#\# `(id    ,(substring s 1)))
+           (#\$ `(name  ,(substring s 1)))
+           (#\: `(type  ,(substring s 1)))
            (_ (string->symbol s))))
        attr-short-strs))
 
@@ -161,7 +157,7 @@
 
 (define (remove-duplicates str-list)
   (define h (make-hash))
-  (for/list ((str str-list)
+  (for/list ((str (in-list str-list))
              #:when (not (hash-has-key? h str)))
     (hash-set! h str #t)
     str))
@@ -180,7 +176,7 @@
              grps)))
   
   (define att-name-values
-    (for/list ([att simpleAttributeList]
+    (for/list ([att (in-list simpleAttributeList)]
                #:when (and (pair? att) (eq? (car att) 'ExplicitAttribute))
                #:do ((define name (second att)))
                #:do ((define name-symbol (if (string? name) (string->symbol name) name)))
@@ -188,13 +184,14 @@
       (list name-symbol value)))
 
   (define result-atts
-    (for/list ([grp (group-by first att-name-values)]
+    (for/list ([grp (in-list (group-by first att-name-values))]
                #:do ((define attname (caar grp))))
       
       (list
        attname
        (if (or (eq? attname 'class) (eq? attname 'className))
-           (apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp)))
+           ;(apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp)))
+           (string-join (remove-duplicates (map second grp)) (if (eq? attname 'style) "; " " "))
            (second (first grp))))))
 
     (to-sxml-atts result-atts))
@@ -296,7 +293,7 @@
  |#
 
   (define (rewriteAbbrevAttrFacets node)
-    (for/list ((node-elem node)
+    (for/list ((node-elem (in-list node))
                (index (in-naturals 0)))
       (match node-elem
         [_ #:when (= index 0) node-elem]
@@ -389,9 +386,14 @@
             
               ((list-rest 'class tail)                          (--> `(ClassAttribute ,@tail)))
             
-              ((list 'ClassAttribute (and (? string? (pregexp " ")) s)) (--> `(ClassAttribute ,@(string-split s))))
+              ;((list 'ClassAttribute (and (? string? (pregexp " ")) s))
+              ;                                                 (--> `(ClassAttribute ,@(string-split s))))
               
-              ((list 'ClassAttribute (? string? s))             (--> `(ExplicitAttribute ,class-attr-name ,s)))
+              ((list 'ClassAttribute (and (? string?) s))
+               #:when (string-contains? s " ")
+                                                               (--> `(ClassAttribute ,@(string-split s))))
+              
+              ((list 'ClassAttribute (? string? s))            (--> `(ExplicitAttribute ,class-attr-name ,s)))
               ((list 'ClassAttribute s tail ...)               (--> `(ClassAttribute ,s) `(ClassAttribute ,@tail)))
             
               ((list 'for tail ...)                            (--> `(ExplicitAttribute ,for-attr-name ,@tail)))
@@ -472,101 +474,28 @@
     ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
     (append-map (λ (el) (renderHtmlElement el)) nodes))
 
-(js-log (renderHtmlElement '(div)))
+(define (js-log-format . args)
+  (js-log (apply format args)))
 
- ; (alter-element-fn
- ;  (λ (el)
- ;    `(React.createElement ,(~a (car el)) ,@(cdr el))))
-
-
-  ;(provide #| renderHtmlElements |# renderHtmlElement attr-prepend include-empty-atts? alter-element-fn output-type)
+;(js-log-format "(rewriteElement '(div)): ~a" (rewriteElement '(div)))
 
 
 
-  #| (renderHtmlElement '(div.container
-                          (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css")
-                                      (integrity "sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N")
-                                      (crossOrigin "anonymous")) 
-            
-                          (button.am-i-insane
-                           (class "btn btn-success")
-                           (onClick on-button-click)
-                           (style button-style)
-                           (if show-form
-                               "Hide address"
-                               "Show address"))
-            
-                          (span (HtmlContent "(+ \"Count: \" count)"))
-                                 
-                          (button
-                           .btn.btn-secondary
-                           (onClick on-button2-click)
-                           "Add 1")
-   
-                          ;(render-html-element 
-                          (form
-                           (.form-row
-                              
-                            (.form-group .col-md-6
-                                         (label (for "inputEmail4") "Email")
-                              
-                                         (input:email
-                                          .form-control#inputEmail4
-                                          required
-                                          (placeholder "Email")))
-                        
-                            (.form-group .col-md-6
-                                         (label (for "inputPassword4") "Password")
-                                         (input.form-control#inputPassword4
-                                          :password
-                                          (placeholder "Password"))))
-                       
-                           (if show-form (.form-group
-                                          (label (for "inputAddress") "Address")
-                                          (input:text
-                                           $inputAddress.form-control#inputAddress
-                                           (placeholder "1234 Main St")))
-                               (hr))
-                       
-                           (.form-group
-                            (label (for "inputAddress2") "Address 2")
-                            (input:text
-                             (AbbrevAttrString ".form-control #inputAddress2")
-                             (placeholder "Apartment, studio, or floor")))
-                       
-                           (.form-row
-                            (.form-group .col-md-6
-                                         (label (for "inputCity") "City")
-                                         (:text
-                                          (AbbrevAttrString "#inputCity .form-control $inputCity")))
-                        
-                            (.form-group .col-md-4
-                                         (label (for "inputState") "State")
-                                         (select
-                                          (defaultValue "Choose...")
-                                          (AbbrevAttrString ".form-control #inputState $inputState")
-                                          (option "Choose...")
-                                          (option "...")))
-                        
-                            (.form-group .col-md-2
-                                         (label (for "inputZip") "Zip")
-                                         (BS/TextBox
-                                          (AbbrevAttrString "#inputZip $inputZip")))
-                       
-                            (.form-group
-                             (.form-check
-                              (input (AbbrevAttrString ".form-check-input :checkbox #gridCheck") checked)
-                              (label.form-check-label
-                               (for "gridCheck")
-                               "        Check me out\n"))))
-                       
-                           (button.btn.btn-primary
-                            (type "submit")
-                         "Sign in")))) |#
+(define test-sxml
+  (renderHtmlElement '(button.am-i-insane
+                       (class "btn btn-success")
+                       "Show address")))
 
-  ;(require net/sendurl)
-
-  ;(send-url/file "react-playing.html")
+;; Build a dom node with a small hello message.
+  (define content
+        (sxml->dom (car test-sxml)))
+      
+      
+      ;; Get the (empty) body node and our message.
+      (define body (js-document-body))
+      (js-append-child! body content)
+      
+      ;; Use the JavaScript Console for debugging.
+      (js-log "Hello!")
 
 
-  
