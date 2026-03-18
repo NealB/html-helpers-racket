@@ -7,4 +7,6 @@ compiled/
 .\#*
 exercise.exports
 react-example.js
+*.wat
+
 
