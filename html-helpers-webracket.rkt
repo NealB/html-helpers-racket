@@ -476,9 +476,9 @@
 
 
 
-  (alter-element-fn
-   (λ (el)
-     `(React.createElement ,(~a (car el)) ,@(cdr el))))
+ ; (alter-element-fn
+ ;  (λ (el)
+ ;    `(React.createElement ,(~a (car el)) ,@(cdr el))))
 
 
   ;(provide #| renderHtmlElements |# renderHtmlElement attr-prepend include-empty-atts? alter-element-fn output-type)
