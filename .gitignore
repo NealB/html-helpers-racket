@@ -8,5 +8,6 @@ compiled/
 exercise.exports
 react-example.js
 *.wat
-
+*.wasm
+*.sexp
 

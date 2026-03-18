@@ -1,4 +1,4 @@
-#lang webracket
+;;#lang webracket
 ;;;
 ;;; Hello World 3
 ;;;
@@ -6,21 +6,19 @@
 ;;; it with sxml->dom, avoiding direct js-create-element calls.
 
 ;; Build a dom node with a small hello message.
-#| (define content
-     (sxml->dom
-      '(div
-         (h1 "Hello, WebRacket!")
-      (p "This page was compiled from Racket to WebAssembly.")))) |#
+(define content
+  (sxml->dom
+   '(div
+      (h1 "Hello, WebRacket!")
+      (p "This page was compiled from Racket to WebAssembly."))))
 
 
 ;; Get the (empty) body node and our message.
-;(define body (js-document-body))
-;(js-append-child! body content)
+(define body (js-document-body))
+(js-append-child! body content)
 
 ;; Use the JavaScript Console for debugging.
-;(js-log "Hello!")
-
-
+(js-log "Hello!")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -474,7 +472,7 @@
     ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
     (append-map (λ (el) (renderHtmlElement el)) nodes))
 
-
+(js-log (renderHtmlElement '(div)))
 
  ; (alter-element-fn
  ;  (λ (el)
