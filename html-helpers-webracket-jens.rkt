@@ -1,12 +1,14 @@
-#lang webracket
-(require (for-syntax racket/base))
-
-(define (nop . _) (void))
-
-(define js-log* displayln)
-(define js-document-body* nop)
-(define js-append-child!* nop)
-(define sxml->dom* displayln)
+#| #lang webracket
+   (require (for-syntax racket/base))
+   
+   (define (nop . _) (void))
+   
+   (define js-log displayln)
+   (define js-document-body nop)
+   (define js-append-child! nop)
+   (define sxml->dom displayln)
+   (define js-set! nop)
+(define js-global-this nop) |#
 
 (define-syntax (if-browser stx)
   (syntax-case stx ()
@@ -21,12 +23,6 @@
            ;(set! sxml->dom* (λ (s) (displayln "sxml->dom only works in the browser")))
            )]))
 
-
-; polyfill
-;(define (js-log s) (printf "~a~n" s))
-
-;(procedure->external fn_i_want_to_call)
-;(js-set! fn_i_want_to_call (λ (x) (format "hi ~a" x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -87,13 +83,9 @@
 
 
 (define (split-by-slash sym)
-  ;(~> sym
-  ;    ~a
   (string-split (~a sym) "/"))
 
 (define (split-by-bang sym)
-  ;(~> sym
-  ;    ~a
   (string-split (~a sym) "!"))
 
 (define (get-special-prefix str)
@@ -112,13 +104,11 @@
   (define str
     (if (symbol? sym-or-str)
         (~a sym-or-str)
-        ;(string-replace sym-or-str " " "" #:all? #t)
         (list->string
          (for/list ((c (in-list (string->list sym-or-str)))
                     #:when (not (eq? c #\space)))
            c))))
 
-  ;(let loop ((offset 0) (acc '()))
   (define attr-short-strs
     (let loop ((remaining-string str) (acc '()))
       (if (string=? "" remaining-string)
@@ -131,7 +121,6 @@
 
   (map (λ (s)
          (match (string-ref s 0)
-           ;("" (loop next-offset (list (string->symbol suffix))))
            (#\. `(class ,(substring s 1)))
            (#\# `(id    ,(substring s 1)))
            (#\$ `(name  ,(substring s 1)))
@@ -139,9 +128,18 @@
            (_ (string->symbol s))))
        attr-short-strs))
 
-;(define split_attribute_short_strings split-attribute-short-strings)
+(define (split_attribute_short_strings str)
+  (let ((os (open-output-string))
+        (l (split-attribute-short-strings str)))
+    (print l os)
+    (get-output-string os)))
 
-(procedure->external split-attribute-short-strings)
+;(procedure->external split-attribute-short-strings)
+
+;; important
+(js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
+
+
 
 ;(define m (regexp-match #px"(^|\\.|#|\\$|:)([^.#\\$:]+)" str offset))
 
@@ -495,28 +493,36 @@
     ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
     (append-map (λ (el) (renderHtmlElement el)) nodes))
 
+; important
 (define (js-log-format . args)
-  (js-log* (apply format args)))
-
-;(js-log-format "(rewriteElement '(div)): ~a" (rewriteElement '(div)))
+  (js-log (apply format args)))
 
 
+
+(define (render_html_element s)
+  (let* ((v (read (open-input-string s)))
+         (os (open-output-string)))
+    (print (renderHtmlElement v) os)
+    (get-output-string os)))
+
+;; important
+(js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
 
 (define test-sxml
   (renderHtmlElement '(button.am-i-insane
                        (class "btn btn-success")
                        "Show address")))
 
-;; Build a dom node with a small hello message.
-  (define content
-        (sxml->dom* (car test-sxml)))
-      
-      
-      ;; Get the (empty) body node and our message.
-      (define body (js-document-body*))
-      (js-append-child!* body content)
-      
-      ;; Use the JavaScript Console for debugging.
-      (js-log* "Hello!")
-
-
+;; important
+   (define content
+           (sxml->dom (car test-sxml)))
+         
+         
+         ;; Get the (empty) body node and our message.
+         (define body (js-document-body))
+         (js-append-child! body content)
+         
+         ;; Use the JavaScript Console for debugging.
+         (js-log "Hello!")
+   
+ 
