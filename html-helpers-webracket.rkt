@@ -1,30 +1,15 @@
-#lang webracket
-(require (for-syntax racket/base))
-
-(define js-log js-log)
-(define sxml->dom sxml->dom)
-
-(define-syntax (if-browser stx)
-  (syntax-case stx ()
-    [(_if-browser browser-begin non-browser-begin)
-     (if (getenv "BROWSER")
-         #'browser-begin
-         (begin
-           (set! js-log (λ (s) (displayln s)))
-           (set! sxml->dom (λ (x) x))))]))
-         ;#'non-browser-begin)]))
-
-;;;
-;;; Hello World 3
-;;;
-;;; This variant uses SXML to describe the DOM tree and then converts
-;;; it with sxml->dom, avoiding direct js-create-element calls.
- 
-
-; polyfill
-;(define (js-log s) (printf "~a~n" s))
-
-
+#| #lang webracket
+   (require (for-syntax racket/base))
+   
+   (define (nop . _) (void))
+   
+   (define js-log displayln)
+   (define js-document-body nop)
+   (define js-append-child! nop)
+   (define sxml->dom displayln)
+   (define js-set! nop)
+(define js-global-this nop) |#
+(include-lib sxml)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -50,10 +35,7 @@
       table tbody td template textarea tfoot th thead title tr ul Stylesheet
       Option))
 
-;(define html_element_set (list->set html_elements))
-;(delay (list->set html_elements)))
-
-;(define (~a x) (format "~a" x))
+(define (~a x) (format "~a" x))
 
 (define (html_element_tag? tag)
   (or
@@ -68,15 +50,9 @@
      (string-prefix? (~a tag) "$")
      (string-prefix? (~a tag) "BS/")
      (string-prefix? (~a tag) "Call!")))))
-    
-
-;(define (html-helper-macro-find s)
-;  (define sym (string->symbol s))
-;  (eval sym html-helper-macro-ns))
 
 (define (lower-case-symbol? sym)
   (and (symbol? sym)
-       ;(~> sym ~a (string-ref 0) char-lower-case?)))
        (let* ((str (~a sym))
               (firstchar (string-ref str 0)))
          (char-lower-case? firstchar))))
@@ -85,13 +61,9 @@
 
 
 (define (split-by-slash sym)
-  ;(~> sym
-  ;    ~a
   (string-split (~a sym) "/"))
 
 (define (split-by-bang sym)
-  ;(~> sym
-  ;    ~a
   (string-split (~a sym) "!"))
 
 (define (get-special-prefix str)
@@ -110,13 +82,11 @@
   (define str
     (if (symbol? sym-or-str)
         (~a sym-or-str)
-        ;(string-replace sym-or-str " " "" #:all? #t)
         (list->string
          (for/list ((c (in-list (string->list sym-or-str)))
                     #:when (not (eq? c #\space)))
            c))))
 
-  ;(let loop ((offset 0) (acc '()))
   (define attr-short-strs
     (let loop ((remaining-string str) (acc '()))
       (if (string=? "" remaining-string)
@@ -129,7 +99,6 @@
 
   (map (λ (s)
          (match (string-ref s 0)
-           ;("" (loop next-offset (list (string->symbol suffix))))
            (#\. `(class ,(substring s 1)))
            (#\# `(id    ,(substring s 1)))
            (#\$ `(name  ,(substring s 1)))
@@ -137,38 +106,11 @@
            (_ (string->symbol s))))
        attr-short-strs))
 
-;(define m (regexp-match #px"(^|\\.|#|\\$|:)([^.#\\$:]+)" str offset))
-
-#|     (define first-char (car char-list))
-       
-       (define (char-special? c) (member c '(#\. #\# #\$ #\:)))
-   
-       (define first-char-special? (char-special? first-char))
-   
-       (let loop ((list-remaining (cdr char-list)) (acc `(,first-char)))
-         (if (or (null? list-remaining) (char-special? (car list-remaining)))
-             (values (reverse acc) list-remaining)
-    
-          (loop (cdr list-remaining) (cons (car list-remaining) acc)))) |#
-
-#| (cond
-         ((not first-char-special?)
-          (loop next-offset (list (string->symbol suffix))))
-         
-           (reverse acc)
-           (begin
-             (match-let (((list m prefix suffix) m))
-               
-               (local
-                 ((define next-offset (+ offset (string-length m))))
-   
-                 (match prefix
-                   ("" (loop next-offset (list (string->symbol suffix))))
-                   ("." (loop next-offset (cons `(class ,suffix) acc)))
-                   ("#" (loop next-offset (cons `(id ,suffix) acc)))
-                   ("$" (loop next-offset (cons `(name ,suffix) acc)))
-                   (":" (loop next-offset (cons `(type ,suffix) acc)))
-                ))))) |#
+(define (split_attribute_short_strings str)
+  (let ((os (open-output-string))
+        (l (split-attribute-short-strings str)))
+    (print l os)
+    (get-output-string os)))
 
 (define (remove-duplicates str-list)
   (define h (make-hash))
@@ -205,7 +147,6 @@
       (list
        attname
        (if (or (eq? attname 'class) (eq? attname 'className))
-           ;(apply ~a #:separator (if (eq? attname 'style) "; " " ") (remove-duplicates (map second grp)))
            (string-join (remove-duplicates (map second grp)) (if (eq? attname 'style) "; " " "))
            (second (first grp))))))
 
@@ -227,8 +168,6 @@
          (let*
              ((facets facets1)
               (sxmlAttributeList (generateSxmlAttributeList facets))
-                         
-              ;(tag (and~> (assoc 'Tag facets) second ensure-symbol))
 
               (tag-facet (assoc 'Tag facets))
               (tag
@@ -238,10 +177,6 @@
               
             
               (childrenOrFalse (false-if-not (gatherChildren facets '()) pair?))
-             
-              ;(childrenOrFalse (and~> facets
-              ;                        (gatherChildren '())
-              ;                        (false-if-not pair?)))
              
               (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
             
@@ -275,7 +210,6 @@
   
       ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
       ((list 'Option value text)                `(option (value ,value) ,text))
-      ;((list 'Input/Text atts ...)             `(input (type "text") ,@atts))
 
       ((list
         (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
@@ -301,12 +235,6 @@
       (_ node)))
 
 
-#|     (match (~a tag)
-         ((regexp #px"^[.#]") `(,(string->symbol (format "div~a" tag)) ,@(cdr node)))
-         ((regexp #px"^[:$]") `(,(string->symbol (format "input~a" tag)) ,@(cdr node)))
-         (_ node)))
- |#
-
   (define (rewriteAbbrevAttrFacets node)
     (for/list ((node-elem (in-list node))
                (index (in-naturals 0)))
@@ -329,7 +257,6 @@
 
   (define (rewriteElement node0)
     (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
-    ;(define node (~> node0 fillDefaultTag rewriteAbbrevAttrFacets))
     
     (let loop ((node-iteration node))
       (define rewritten (rewriteElementStep node-iteration))
@@ -401,9 +328,7 @@
             
               ((list-rest 'class tail)                          (--> `(ClassAttribute ,@tail)))
             
-              ;((list 'ClassAttribute (and (? string? (pregexp " ")) s))
-              ;                                                 (--> `(ClassAttribute ,@(string-split s))))
-              
+
               ((list 'ClassAttribute (and (? string?) s))
                #:when (string-contains? s " ")
                                                                (--> `(ClassAttribute ,@(string-split s))))
@@ -439,12 +364,7 @@
                #:do ((define tag-class-id-split (split-attribute-short-strings str)))
                (apply --> tag-class-id-split))
             
-              ;((and (? rewriteElement) passThru)            (loop attrs-tail (cons passThru explicit-attrs)))
-
               (_                                            (next)))))))
-
-
-  ;((var passThru)                               (loop attrs-tail (cons passThru explicit-attrs))))))))
 
 
 
@@ -481,36 +401,82 @@
 
 
   (define (renderHtmlElements nodes)
-    ;(if (symbol? (first nodes))
-      
-    ;    (renderHtmlElement nodes )
-      
-    ;(~>> nodes
-    ;     (filter (λ (el) (and el (not (null? el)) (pair? el))))
     (append-map (λ (el) (renderHtmlElement el)) nodes))
 
+; important
 (define (js-log-format . args)
   (js-log (apply format args)))
 
-;(js-log-format "(rewriteElement '(div)): ~a" (rewriteElement '(div)))
+
+
+(define (render_html_element s (as-string? #t))
+  (define v (read (open-input-string s)))
+  (define rendered (renderHtmlElement v))
+
+  (if as-string?
+      (let* ((os (open-output-string)))
+        (print rendered os)
+        (get-output-string os))
+      rendered))
+
+(js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
+(js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
 
 
 
 (define test-sxml
-  (renderHtmlElement '(button.am-i-insane
-                       (class "btn btn-success")
-                       "Show address")))
+  (renderHtmlElement
+   `(div
+     (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"))
 
-;; Build a dom node with a small hello message.
-  (define content
-        (sxml->dom (car test-sxml)))
-      
-      
-      ;; Get the (empty) body node and our message.
-      (define body (js-document-body))
-      (js-append-child! body content)
-      
-      ;; Use the JavaScript Console for debugging.
-      (js-log "Hello!")
+     (BS/Container
+      (h3 "Convert s-expressions to html")
 
+      (div
+       (textarea
+        |#helper-text-input| .form-control $helper-text-input
+        (rows 6)
+        (cols 100)
+        (placeholder "Type html helper expression here")
+        "(div.foo.bar
+  (ul
+    (li \"one\")
+    (li \"two\"))
+  \"Lorem ipsum\")"))
+
+       (div
+        (button:button
+         .btn.btn-success
+         |#convert-helper-string|
+         "Convert"))
+
+       (pre
+        |#output-display|
+        )))))
+
+(define content
+  (sxml->dom (car test-sxml)))
+
+(define body (js-document-body))
+(js-append-child! body content)
+
+
+(define (handle-convert-button-click event)
+  (define helper-text-input (js-get-element-by-id "helper-text-input"))
+  (define str (js-ref helper-text-input "value"))
+  
+  (define sxml-result (render_html_element str #f))
+
+  ;(js-log "sxml-result:")
+  ;(js-log sxml-result)
+  
+  (define xml-result (sxml->html (car sxml-result)))
+
+  (define output-display (js-get-element-by-id "output-display"))
+  (js-set! output-display "innerText" xml-result))
+
+(define convert-button (js-get-element-by-id "convert-helper-string"))
+
+(define convert-button-callback (procedure->external handle-convert-button-click))
+(js-add-event-listener! convert-button "click" convert-button-callback)
 
