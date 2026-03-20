@@ -500,8 +500,11 @@
 
 
 (define (render_html_element s)
-  (let* ((v (read (open-input-string s)))
-         (os (open-output-string)))
+  (define v (read (open-input-string s)))
+;  (define v (with-handlers ([(lambda _ #t) "read"]) (read (open-input-string s))))
+  ;(js-log (format "v: ~a" v))
+
+  (let* ((os (open-output-string)))
     (print (renderHtmlElement v) os)
     (get-output-string os)))
 
@@ -509,13 +512,17 @@
 (js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
 
 (define test-sxml
-  (renderHtmlElement '(button.am-i-insane
-                       (class "btn btn-success")
-                       "Show address")))
+  (renderHtmlElement '(form
+                       (action "/")
+                       (p "paragraph 1")
+                       (p "paragraph 2")
+                       (button
+                        (class "btn btn-success")
+                        "Show address"))))
 
 ;; important
    (define content
-           (sxml->dom (car test-sxml)))
+     (sxml->dom (car test-sxml)))
          
          
          ;; Get the (empty) body node and our message.

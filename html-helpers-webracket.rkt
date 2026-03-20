@@ -1,4 +1,19 @@
-;#lang racket
+#lang webracket
+(require (for-syntax racket/base))
+
+(define js-log js-log)
+(define sxml->dom sxml->dom)
+
+(define-syntax (if-browser stx)
+  (syntax-case stx ()
+    [(_if-browser browser-begin non-browser-begin)
+     (if (getenv "BROWSER")
+         #'browser-begin
+         (begin
+           (set! js-log (λ (s) (displayln s)))
+           (set! sxml->dom (λ (x) x))))]))
+         ;#'non-browser-begin)]))
+
 ;;;
 ;;; Hello World 3
 ;;;
@@ -38,7 +53,7 @@
 ;(define html_element_set (list->set html_elements))
 ;(delay (list->set html_elements)))
 
-(define (~a x) (format "~a" x))
+;(define (~a x) (format "~a" x))
 
 (define (html_element_tag? tag)
   (or
