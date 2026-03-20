@@ -136,9 +136,6 @@
 
 ;(procedure->external split-attribute-short-strings)
 
-;; important
-(js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
-
 
 
 ;(define m (regexp-match #px"(^|\\.|#|\\$|:)([^.#\\$:]+)" str offset))
@@ -405,9 +402,7 @@
             
               ((list-rest 'class tail)                          (--> `(ClassAttribute ,@tail)))
             
-              ;((list 'ClassAttribute (and (? string? (pregexp " ")) s))
-              ;                                                 (--> `(ClassAttribute ,@(string-split s))))
-              
+
               ((list 'ClassAttribute (and (? string?) s))
                #:when (string-contains? s " ")
                                                                (--> `(ClassAttribute ,@(string-split s))))
@@ -501,14 +496,12 @@
 
 (define (render_html_element s)
   (define v (read (open-input-string s)))
-;  (define v (with-handlers ([(lambda _ #t) "read"]) (read (open-input-string s))))
-  ;(js-log (format "v: ~a" v))
 
   (let* ((os (open-output-string)))
     (print (renderHtmlElement v) os)
     (get-output-string os)))
 
-;; important
+(js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
 (js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
 
 (define test-sxml
@@ -531,5 +524,5 @@
          
          ;; Use the JavaScript Console for debugging.
          (js-log "Hello!")
-   
- 
+
+
