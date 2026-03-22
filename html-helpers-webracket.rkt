@@ -1,4 +1,5 @@
-#| #lang webracket
+#lang webracket
+#|
    (require (for-syntax racket/base))
    
    (define (nop . _) (void))
@@ -150,258 +151,258 @@
            (string-join (remove-duplicates (map second grp)) (if (eq? attname 'style) "; " " "))
            (second (first grp))))))
 
-    (to-sxml-atts result-atts))
+  (to-sxml-atts result-atts))
 
 
 
-  ;;
-  ;; sxmlFromSimpleFacets
-  ;;
-  (define (sxmlFromSimpleFacets facets0)
+;;
+;; sxmlFromSimpleFacets
+;;
+(define (sxmlFromSimpleFacets facets0)
   
-    (let* ((facets1 (rewriteStringFacets facets0))
-           (outer-tag (get-tag facets1)))
+  (let* ((facets1 (rewriteStringFacets facets0))
+         (outer-tag (get-tag facets1)))
 
-      (cond
-        [(eq? (car facets1) '&) (list facets1)]
-        [else
-         (let*
-             ((facets facets1)
-              (sxmlAttributeList (generateSxmlAttributeList facets))
+    (cond
+      [(eq? (car facets1) '&) (list facets1)]
+      [else
+       (let*
+           ((facets facets1)
+            (sxmlAttributeList (generateSxmlAttributeList facets))
 
-              (tag-facet (assoc 'Tag facets))
-              (tag
-               (and tag-facet
-                    (ensure-symbol (second tag-facet))))
+            (tag-facet (assoc 'Tag facets))
+            (tag
+             (and tag-facet
+                  (ensure-symbol (second tag-facet))))
 
               
             
-              (childrenOrFalse (false-if-not (gatherChildren facets '()) pair?))
+            (childrenOrFalse (false-if-not (gatherChildren facets '()) pair?))
              
-              (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
+            (withAtts `(,tag  ,@(if sxmlAttributeList (list sxmlAttributeList) '())))
             
-              (withContent (cond 
-                             (childrenOrFalse (append withAtts (renderHtmlElements (cdr childrenOrFalse))))
-                             (else withAtts))))
+            (withContent (cond 
+                           (childrenOrFalse (append withAtts (renderHtmlElements (cdr childrenOrFalse))))
+                           (else withAtts))))
 
 
-           (if (alter-element-fn)
-               (list ((alter-element-fn) withContent))
-               (list withContent)))])))
+         (if (alter-element-fn)
+             (list ((alter-element-fn) withContent))
+             (list withContent)))])))
 
 
 
-  (define (rewriteElementStep node)
+(define (rewriteElementStep node)
 
-    (match node
-      ((list 'BS/Select atts ...)              `(select (class "form-control") ,@atts))
-      ((list 'BS/Hidden atts ...)              `(input (type "hidden") (class "form-control") ,@atts))
-      ((list 'BS/TextBox atts ...)             `(input (type "text") (class "form-control") ,@atts))
-      ((list 'BS/RadioButton atts ...)         `(input (type "radio") (class "form-control custom-control-input") ,@atts))
-      ((list 'BS/FormGroupRow atts ...)        `(BS/Row (class "form-group") ,@atts))
-      ((list 'BS/Row atts ...)                 `(div (class "row") ,@atts))
-      ((list 'BS/Col atts ...)                 `(div (class "col") ,@atts))
-      ((list 'BS/Container atts ...)           `(div (class "container") ,@atts))
-      ((list 'BS/TableFixedLayout atts ...)    `(table (class "table") (style "table-layout: fixed") ,@atts))
+  (match node
+    ((list 'BS/Select atts ...)              `(select (class "form-control") ,@atts))
+    ((list 'BS/Hidden atts ...)              `(input (type "hidden") (class "form-control") ,@atts))
+    ((list 'BS/TextBox atts ...)             `(input (type "text") (class "form-control") ,@atts))
+    ((list 'BS/RadioButton atts ...)         `(input (type "radio") (class "form-control custom-control-input") ,@atts))
+    ((list 'BS/FormGroupRow atts ...)        `(BS/Row (class "form-group") ,@atts))
+    ((list 'BS/Row atts ...)                 `(div (class "row") ,@atts))
+    ((list 'BS/Col atts ...)                 `(div (class "col") ,@atts))
+    ((list 'BS/Container atts ...)           `(div (class "container") ,@atts))
+    ((list 'BS/TableFixedLayout atts ...)    `(table (class "table") (style "table-layout: fixed") ,@atts))
         
-      ((list 'Element atts ...)                `(#:Finished ,@atts))
-      ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
-      ((list '& atts ...)                      `(#:Finished `& ,@atts))
+    ((list 'Element atts ...)                `(#:Finished ,@atts))
+    ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
+    ((list '& atts ...)                      `(#:Finished `& ,@atts))
   
-      ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
-      ((list 'Option value text)                `(option (value ,value) ,text))
+    ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
+    ((list 'Option value text)                `(option (value ,value) ,text))
 
-      ((list
-        (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
-       #:when (not (null? class-id-list))
-       `(,tag ,@class-id-list ,@atts))
+    ((list
+      (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
+     #:when (not (null? class-id-list))
+     `(,tag ,@class-id-list ,@atts))
   
-      ((list (? html_element_tag? tag) atts ...) `(Element (Tag ,(~a tag)) ,@atts))
+    ((list (? html_element_tag? tag) atts ...) `(Element (Tag ,(~a tag)) ,@atts))
 
-      (_ #f)))
+    (_ #f)))
 
 
-  (define (fillDefaultTag node)
-    (define tag (car node))
+(define (fillDefaultTag node)
+  (define tag (car node))
   
-    (match (string-ref (~a tag) 0)
-      ((or #\. #\#)
+  (match (string-ref (~a tag) 0)
+    ((or #\. #\#)
        
-       `(,(string->symbol (string-append "div" (~a tag))) ,@(cdr node)))
+     `(,(string->symbol (string-append "div" (~a tag))) ,@(cdr node)))
       
-      ((or #\: #\$)
-       `(,(string->symbol (string-append "input" (~a tag))) ,@(cdr node)))
+    ((or #\: #\$)
+     `(,(string->symbol (string-append "input" (~a tag))) ,@(cdr node)))
       
-      (_ node)))
+    (_ node)))
 
 
-  (define (rewriteAbbrevAttrFacets node)
-    (for/list ((node-elem (in-list node))
-               (index (in-naturals 0)))
-      (match node-elem
-        [_ #:when (= index 0) node-elem]
-        ['checked `(CheckedProperty #t)]
-        ['required `(RequiredProperty #t)]
-        ['selected `(SelectedProperty #t)]
-        [(? symbol?)
-         (list 'AbbrevAttrString (~a node-elem))]
-        [_ node-elem])))
+(define (rewriteAbbrevAttrFacets node)
+  (for/list ((node-elem (in-list node))
+             (index (in-naturals 0)))
+    (match node-elem
+      [_ #:when (= index 0) node-elem]
+      ['checked `(CheckedProperty #t)]
+      ['required `(RequiredProperty #t)]
+      ['selected `(SelectedProperty #t)]
+      [(? symbol?)
+       (list 'AbbrevAttrString (~a node-elem))]
+      [_ node-elem])))
 
 
-  (define (rewriteStringFacets node)
-    (map (λ (facet)
-           (if (string? facet) `(HtmlContent ,facet) facet))
-         node))
+(define (rewriteStringFacets node)
+  (map (λ (facet)
+         (if (string? facet) `(HtmlContent ,facet) facet))
+       node))
 
 
 
-  (define (rewriteElement node0)
-    (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
+(define (rewriteElement node0)
+  (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
     
-    (let loop ((node-iteration node))
-      (define rewritten (rewriteElementStep node-iteration))
+  (let loop ((node-iteration node))
+    (define rewritten (rewriteElementStep node-iteration))
 
-      (cond
-        [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
-        [rewritten (loop rewritten)]
-        [else (printf "node0:~n") (print node0) (printf "node-iteration:~n") (print node-iteration) (printf "rewritten:~n") (print rewritten) (raise "what happened?~n")])))
+    (cond
+      [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
+      [rewritten (loop rewritten)]
+      [else (printf "node0:~n") (print node0) (printf "node-iteration:~n") (print node-iteration) (printf "rewritten:~n") (print rewritten) (raise "what happened?~n")])))
 
 
-  (define (gatherChildren facets child-acc) ;(child-acc '()))
+(define (gatherChildren facets child-acc) ;(child-acc '()))
   
         
-    (if (null? facets)
-        (and (not (null? child-acc)) `(Children ,@(reverse child-acc)))
+  (if (null? facets)
+      (and (not (null? child-acc)) `(Children ,@(reverse child-acc)))
         
-        (local
-          ((match-define (list facets-head facets-tail ...) facets)
+      (local
+        ((match-define (list facets-head facets-tail ...) facets)
            
-           (define (--> . replacement-facets) (gatherChildren `(,@replacement-facets ,@facets-tail) child-acc))
-           (define (continue) (gatherChildren facets-tail child-acc)))
+         (define (--> . replacement-facets) (gatherChildren `(,@replacement-facets ,@facets-tail) child-acc))
+         (define (continue) (gatherChildren facets-tail child-acc)))
 
-          (match facets-head
-            ((list 'if pred body1 body2)                         (gatherChildren facets-tail (cons facets-head child-acc)))
-            ((list (? html_element_tag?) _ ...)                  (gatherChildren (cons `(Children ,facets-head) facets-tail) child-acc))
-            ((list 'Children child)                              (gatherChildren facets-tail (cons child child-acc)))
-            ((list 'Elements elements ...)                       (--> `(Children ,@elements)))
-            ((list 'Children first-child rest-of-children ...)   (--> `(Children ,first-child) `(Children ,@rest-of-children)))
-            ((and (list 'Element _ ...) element)                 (gatherChildren facets-tail (cons element child-acc)))
+        (match facets-head
+          ((list 'if pred body1 body2)                         (gatherChildren facets-tail (cons facets-head child-acc)))
+          ((list (? html_element_tag?) _ ...)                  (gatherChildren (cons `(Children ,facets-head) facets-tail) child-acc))
+          ((list 'Children child)                              (gatherChildren facets-tail (cons child child-acc)))
+          ((list 'Elements elements ...)                       (--> `(Children ,@elements)))
+          ((list 'Children first-child rest-of-children ...)   (--> `(Children ,first-child) `(Children ,@rest-of-children)))
+          ((and (list 'Element _ ...) element)                 (gatherChildren facets-tail (cons element child-acc)))
 
-            ((? string?)                                         (--> `(HtmlContent  ,facets-head)))
-            ((list 'HtmlContent html)                            (gatherChildren facets-tail (cons facets-head child-acc)))
-            ((list 'Stylesheet _ ...)                            (gatherChildren facets-tail (cons facets-head child-acc)))
-            (_                                                   (continue))))))
+          ((? string?)                                         (--> `(HtmlContent  ,facets-head)))
+          ((list 'HtmlContent html)                            (gatherChildren facets-tail (cons facets-head child-acc)))
+          ((list 'Stylesheet _ ...)                            (gatherChildren facets-tail (cons facets-head child-acc)))
+          (_                                                   (continue))))))
 
 
-  (define class-attr-name
-    (if (eq? output-type 'react)
-        'className
-        'class))
+(define class-attr-name
+  (if (eq? output-type 'react)
+      'className
+      'class))
   
-  (define for-attr-name
-    (if (eq? output-type 'react)
-        'htmlFor
-        'for))
+(define for-attr-name
+  (if (eq? output-type 'react)
+      'htmlFor
+      'for))
 
 
-  (define (rewriteAttributes htmlAttributes)
+(define (rewriteAttributes htmlAttributes)
 
 
-    (let loop ((remaining-htmlAttributes htmlAttributes) (explicit-attrs '()))
+  (let loop ((remaining-htmlAttributes htmlAttributes) (explicit-attrs '()))
         
-      (if (null? remaining-htmlAttributes)
-          (reverse explicit-attrs)
+    (if (null? remaining-htmlAttributes)
+        (reverse explicit-attrs)
 
-          (local
-            ((match-define (list-rest attrs-head attrs-tail) remaining-htmlAttributes)
+        (local
+          ((match-define (list-rest attrs-head attrs-tail) remaining-htmlAttributes)
 
-             (define (--> . replacement-attributes)
-               (loop (append replacement-attributes attrs-tail) explicit-attrs))
+           (define (--> . replacement-attributes)
+             (loop (append replacement-attributes attrs-tail) explicit-attrs))
 
-             (define (next)
-               (loop attrs-tail explicit-attrs)))
+           (define (next)
+             (loop attrs-tail explicit-attrs)))
 
-            (match attrs-head
-              ((or #f '())                                      (next))
+          (match attrs-head
+            ((or #f '())                                      (next))
             
-              ((and (list 'ExplicitAttribute _ _) explicit)     (loop attrs-tail (cons explicit explicit-attrs)))
+            ((and (list 'ExplicitAttribute _ _) explicit)     (loop attrs-tail (cons explicit explicit-attrs)))
             
-              ((list-rest 'class tail)                          (--> `(ClassAttribute ,@tail)))
+            ((list-rest 'class tail)                          (--> `(ClassAttribute ,@tail)))
             
 
-              ((list 'ClassAttribute (and (? string?) s))
-               #:when (string-contains? s " ")
-                                                               (--> `(ClassAttribute ,@(string-split s))))
+            ((list 'ClassAttribute (and (? string?) s))
+             #:when (string-contains? s " ")
+             (--> `(ClassAttribute ,@(string-split s))))
               
-              ((list 'ClassAttribute (? string? s))            (--> `(ExplicitAttribute ,class-attr-name ,s)))
-              ((list 'ClassAttribute s tail ...)               (--> `(ClassAttribute ,s) `(ClassAttribute ,@tail)))
+            ((list 'ClassAttribute (? string? s))            (--> `(ExplicitAttribute ,class-attr-name ,s)))
+            ((list 'ClassAttribute s tail ...)               (--> `(ClassAttribute ,s) `(ClassAttribute ,@tail)))
             
-              ((list 'for tail ...)                            (--> `(ExplicitAttribute ,for-attr-name ,@tail)))
+            ((list 'for tail ...)                            (--> `(ExplicitAttribute ,for-attr-name ,@tail)))
 
-              ((list 'Attributes (list (? string? name) value)) (--> `(ExplicitAttribute ,(string->symbol name) ,value)))
-              ((list 'Attributes (list (? symbol? name) value)) (--> `(ExplicitAttribute ,name ,value)))
-              ((list 'Attributes (list name value) tail ...)   (--> `(Attributes (,name ,value)) `(Attributes ,@tail)))
+            ((list 'Attributes (list (? string? name) value)) (--> `(ExplicitAttribute ,(string->symbol name) ,value)))
+            ((list 'Attributes (list (? symbol? name) value)) (--> `(ExplicitAttribute ,name ,value)))
+            ((list 'Attributes (list name value) tail ...)   (--> `(Attributes (,name ,value)) `(Attributes ,@tail)))
               
-              (`(CheckedProperty ,b)                        (if b (--> '(ExplicitAttribute checked "checked")) (next)))
-              (`(RequiredProperty ,b)                       (if b (--> '(ExplicitAttribute required "required")) (next)))
-              (`(SelectedProperty ,b)                       (if b (--> '(ExplicitAttribute selected "selected")) (next)))
+            (`(CheckedProperty ,b)                        (if b (--> '(ExplicitAttribute checked "checked")) (next)))
+            (`(RequiredProperty ,b)                       (if b (--> '(ExplicitAttribute required "required")) (next)))
+            (`(SelectedProperty ,b)                       (if b (--> '(ExplicitAttribute selected "selected")) (next)))
 
-              (`(WidthProperty ,w)                          (--> `(StyleAttribute ,(string-append "width: " (number->string w) "px"))))
-              (`(MinWidthProperty ,w)                       (--> `(StyleAttribute ,(string-append "min-width: " (number->string w) "px"))))
-              (`(MaxWidthProperty ,w)                       (--> `(StyleAttribute ,(string-append "max-width: " (number->string w) "px"))))
+            (`(WidthProperty ,w)                          (--> `(StyleAttribute ,(string-append "width: " (number->string w) "px"))))
+            (`(MinWidthProperty ,w)                       (--> `(StyleAttribute ,(string-append "min-width: " (number->string w) "px"))))
+            (`(MaxWidthProperty ,w)                       (--> `(StyleAttribute ,(string-append "max-width: " (number->string w) "px"))))
     
-              (`(HeightProperty ,w)                         (--> `(StyleAttribute ,(string-append "height: " (number->string w) "px"))))
-              (`(MinHeightProperty ,w)                      (--> `(StyleAttribute ,(string-append "min-height: " (number->string w) "px"))))
-              (`(MaxHeightProperty ,w)                      (--> `(StyleAttribute ,(string-append "max-height: " (number->string w) "px"))))
+            (`(HeightProperty ,w)                         (--> `(StyleAttribute ,(string-append "height: " (number->string w) "px"))))
+            (`(MinHeightProperty ,w)                      (--> `(StyleAttribute ,(string-append "min-height: " (number->string w) "px"))))
+            (`(MaxHeightProperty ,w)                      (--> `(StyleAttribute ,(string-append "max-height: " (number->string w) "px"))))
 
-              ((list (? html_element_tag?) _ ...)           (next))
+            ((list (? html_element_tag?) _ ...)           (next))
             
-              ((list (? lower-case-symbol? sym))            (--> `(ExplicitAttribute ,sym ,(~a sym))))
+            ((list (? lower-case-symbol? sym))            (--> `(ExplicitAttribute ,sym ,(~a sym))))
        
-              ((list (? lower-case-symbol? sym) s)          (--> `(ExplicitAttribute ,sym ,s))) ; if the initial symbol is lowercase, treat it as an attribute with that name
+            ((list (? lower-case-symbol? sym) s)          (--> `(ExplicitAttribute ,sym ,s))) ; if the initial symbol is lowercase, treat it as an attribute with that name
 
-              (`(AbbrevAttrString ,str)
-               #:do ((define tag-class-id-split (split-attribute-short-strings str)))
-               (apply --> tag-class-id-split))
+            (`(AbbrevAttrString ,str)
+             #:do ((define tag-class-id-split (split-attribute-short-strings str)))
+             (apply --> tag-class-id-split))
             
-              (_                                            (next)))))))
+            (_                                            (next)))))))
 
 
 
 
-  (define (ensure-symbol s)
-    (if (string? s)
-        (string->symbol s)
-        s))
+(define (ensure-symbol s)
+  (if (string? s)
+      (string->symbol s)
+      s))
  
 
-  (define (get-tag facets)
-    (if (findf (λ (f) (not (pair? f))) facets)
-        #f
-        (let* ((tagPair (assoc 'Tag facets))
-               (tag (and tagPair (ensure-symbol (second tagPair)))))
-          tag)))
+(define (get-tag facets)
+  (if (findf (λ (f) (not (pair? f))) facets)
+      #f
+      (let* ((tagPair (assoc 'Tag facets))
+             (tag (and tagPair (ensure-symbol (second tagPair)))))
+        tag)))
 
-  (define (false-if-not value pred)
-    (and (pred value) value))
+(define (false-if-not value pred)
+  (and (pred value) value))
 
 
 
-  (define (renderHtmlElement node )
+(define (renderHtmlElement node )
 
-    (match node
-      ((? string? s) (list s))
-      ((list 'HtmlContent s) (list s))
+  (match node
+    ((? string? s) (list s))
+    ((list 'HtmlContent s) (list s))
     
-      ((list 'if pred body1 body2)
-       `((if ,pred ,(car (renderHtmlElement body1)) ,(car (renderHtmlElement body2)))))
+    ((list 'if pred body1 body2)
+     `((if ,pred ,(car (renderHtmlElement body1)) ,(car (renderHtmlElement body2)))))
      
      
-      (_ (sxmlFromSimpleFacets (rewriteElement node)))))
+    (_ (sxmlFromSimpleFacets (rewriteElement node)))))
 
 
-  (define (renderHtmlElements nodes)
-    (append-map (λ (el) (renderHtmlElement el)) nodes))
+(define (renderHtmlElements nodes)
+  (append-map (λ (el) (renderHtmlElement el)) nodes))
 
 ; important
 (define (js-log-format . args)
@@ -421,62 +422,4 @@
 
 (js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
 (js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
-
-
-
-(define test-sxml
-  (renderHtmlElement
-   `(div
-     (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"))
-
-     (BS/Container
-      (h3 "Convert s-expressions to html")
-
-      (div
-       (textarea
-        |#helper-text-input| .form-control $helper-text-input
-        (rows 6)
-        (cols 100)
-        (placeholder "Type html helper expression here")
-        "(div.foo.bar
-  (ul
-    (li \"one\")
-    (li \"two\"))
-  \"Lorem ipsum\")"))
-
-       (div
-        (button:button
-         .btn.btn-success
-         |#convert-helper-string|
-         "Convert"))
-
-       (pre
-        |#output-display|
-        )))))
-
-(define content
-  (sxml->dom (car test-sxml)))
-
-(define body (js-document-body))
-(js-append-child! body content)
-
-
-(define (handle-convert-button-click event)
-  (define helper-text-input (js-get-element-by-id "helper-text-input"))
-  (define str (js-ref helper-text-input "value"))
-  
-  (define sxml-result (render_html_element str #f))
-
-  ;(js-log "sxml-result:")
-  ;(js-log sxml-result)
-  
-  (define xml-result (sxml->html (car sxml-result)))
-
-  (define output-display (js-get-element-by-id "output-display"))
-  (js-set! output-display "innerText" xml-result))
-
-(define convert-button (js-get-element-by-id "convert-helper-string"))
-
-(define convert-button-callback (procedure->external handle-convert-button-click))
-(js-add-event-listener! convert-button "click" convert-button-callback)
 
