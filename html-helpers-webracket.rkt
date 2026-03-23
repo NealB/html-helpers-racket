@@ -1,25 +1,7 @@
 #lang webracket
-#|
-   (require (for-syntax racket/base))
-   
-   (define (nop . _) (void))
-   
-   (define js-log displayln)
-   (define js-document-body nop)
-   (define js-append-child! nop)
-   (define sxml->dom displayln)
-   (define js-set! nop)
-(define js-global-this nop) |#
+
 (include-lib sxml)
 
-;;;;;;;;;;;;;;;;;;;;;;;
-
-;(define make-parameter (λ (x) x))
-
-;(define attr-prepend (make-parameter 'object))
-;(define include-empty-atts? (make-parameter #t))
-;(define alter-element-fn (make-parameter #f))
-;(define output-type (make-parameter 'react))
 
 (define (attr-prepend) '@)
 (define (include-empty-atts?) #f)
@@ -221,6 +203,17 @@
 
     (_ #f)))
 
+(define (rewriteElement node0)
+  (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
+    
+  (let loop ((node-iteration node))
+    (define rewritten (rewriteElementStep node-iteration))
+
+    (cond
+      [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
+      [rewritten (loop rewritten)]
+      [else (printf "node0:~n") (print node0) (printf "node-iteration:~n") (print node-iteration) (printf "rewritten:~n") (print rewritten) (raise "what happened?~n")])))
+
 
 (define (fillDefaultTag node)
   (define tag (car node))
@@ -255,17 +248,6 @@
        node))
 
 
-
-(define (rewriteElement node0)
-  (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
-    
-  (let loop ((node-iteration node))
-    (define rewritten (rewriteElementStep node-iteration))
-
-    (cond
-      [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
-      [rewritten (loop rewritten)]
-      [else (printf "node0:~n") (print node0) (printf "node-iteration:~n") (print node-iteration) (printf "rewritten:~n") (print rewritten) (raise "what happened?~n")])))
 
 
 (define (gatherChildren facets child-acc) ;(child-acc '()))
