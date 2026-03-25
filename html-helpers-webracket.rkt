@@ -18,6 +18,12 @@
       table tbody td template textarea tfoot th thead title tr ul Stylesheet
       Option))
 
+#|(define-match-expander test
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ expr) #'(and (not #f) expr)])))|#
+
+
 (define (~a x) (format "~a" x))
 
 (define (html_element_tag? tag)
@@ -55,10 +61,13 @@
   (define (char-special? c) (member c '(#\. #\# #\$ #\:)))
   (define first-char-special? (char-special? first-char))
 
-  (let loop ((list-remaining (cdr char-list)) (acc `(,first-char)))
-    (if (or (null? list-remaining) (char-special? (car list-remaining)))
-        (values (list->string (reverse acc)) (substring str (length acc)))
-        (loop (cdr list-remaining) (cons (car list-remaining) acc)))))
+  (if (string-prefix? str ".#")
+      (get-special-prefix (substring str 1))
+  
+      (let loop ((list-remaining (cdr char-list)) (acc `(,first-char)))
+        (if (or (null? list-remaining) (char-special? (car list-remaining)))
+            (values (list->string (reverse acc)) (substring str (length acc)))
+            (loop (cdr list-remaining) (cons (car list-remaining) acc))))))
 
 
 (define (split-attribute-short-strings sym-or-str)
@@ -80,14 +89,20 @@
               (((str-prefix str-suffix) (get-special-prefix remaining-string)))
             (loop str-suffix (cons str-prefix acc))))))
 
+  (define (has-prefix prefix)
+    (λ (s)
+      (and (string-prefix? s prefix) (substring s (string-length prefix)))))
+  
   (map (λ (s)
-         (match (string-ref s 0)
-           (#\. `(class ,(substring s 1)))
-           (#\# `(id    ,(substring s 1)))
-           (#\$ `(name  ,(substring s 1)))
-           (#\: `(type  ,(substring s 1)))
+         (match s
+           ((app (has-prefix ".#") (? string? suffix)) `(id    ,suffix))
+           ((app (has-prefix ".")  (? string? suffix)) `(class ,suffix))
+           ((app (has-prefix "#")  (? string? suffix)) `(id    ,suffix))
+           ((app (has-prefix "$")  (? string? suffix)) `(name  ,suffix))
+           ((app (has-prefix ":")  (? string? suffix)) `(type  ,suffix))
            (_ (string->symbol s))))
        attr-short-strs))
+
 
 (define (split_attribute_short_strings str)
   (let ((os (open-output-string))

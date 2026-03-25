@@ -10,4 +10,5 @@ react-example.js
 *.wat
 *.wasm
 *.sexp
+index.html
 

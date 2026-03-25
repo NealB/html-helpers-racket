@@ -1,4 +1,3 @@
-;(include-lib html-helpers-webracket)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
 
 (define test-sxml
@@ -6,9 +5,10 @@
    `(div
      (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"))
 
-     ;(script (src "pretty-print.js"))
 (script (src "https://unpkg.com/prettier@3.8.1/standalone.js"))
 (script (src "https://unpkg.com/prettier@3.8.1/plugins/html.js"))
+;(script (src "https://code.jquery.com/jquery-4.0.0.js") (integrity "sha256-9fsHeVnKBvqh3FB2HYu7g2xseAZ5MlN6Kz/qnkASV8U=") (crossorigin "anonymous"))
+;(script:module (src "https://code.jquery.com/jquery-4.0.0.module.js") (integrity "sha256-WK/EJImTrql5EQIEpr2ViDEulDC+Fay9S8aH/huq0IM=") (crossorigin "anonymous"))
 (script "
 function prettyPrintHtml(str)
 {
@@ -30,7 +30,7 @@ function prettyPrintHtml(str)
         (rows 6)
         (cols 100)
         (placeholder "Type html helper expression here")
-        "(div.foo.bar
+        "(div.foo.bar.#foobar-id
   (ul
     (li \"one\")
     (li \"two\"))
@@ -43,7 +43,7 @@ function prettyPrintHtml(str)
         "Convert"))
 
       (pre
-       |#output-display|
+       .#output-display
        )))))
 
 (define content
@@ -52,6 +52,7 @@ function prettyPrintHtml(str)
 (define body (js-document-body))
 (js-append-child! body content)
 
+  
 
 (define (handle-convert-button-click event)
   (define helper-text-input (js-get-element-by-id "helper-text-input"))
@@ -64,8 +65,20 @@ function prettyPrintHtml(str)
   (define js-expression (format "prettyPrintHtml('~a')" xml-result))
   (js-eval js-expression))
 
+
 (define convert-button (js-get-element-by-id "convert-helper-string"))
 
 (define convert-button-callback (procedure->external handle-convert-button-click))
 (js-add-event-listener! convert-button "click" convert-button-callback)
+
+;(js-eval "window.addEventListener('load', (event) => { console.log('here!!! window.onload'); $('div').addClass('foo'); })")
+
+
+#|(define (load-jquery!)
+  (define head   (js-document-head))
+  (define script (js-create-element "script"))
+  (js-set-attribute! script "id" "jquery-script")
+  (js-set-attribute! script "async" "")
+  (js-set-attribute! script "src" "https://code.jquery.com/jquery-4.0.0.js")
+  (js-append-child! head script))|#
 
