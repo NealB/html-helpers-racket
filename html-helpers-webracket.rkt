@@ -417,6 +417,3 @@
         (get-output-string os))
       rendered))
 
-(js-set! (js-global-this) "split_attribute_short_strings" (procedure->external split_attribute_short_strings))
-(js-set! (js-global-this) "render_html_element" (procedure->external render_html_element))
-
