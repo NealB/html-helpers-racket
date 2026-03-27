@@ -407,13 +407,8 @@
 
 
 
-(define (render_html_element s (as-string? #t))
+(define (render_html_element s)
   (define v (read (open-input-string s)))
-  (define rendered (renderHtmlElement v))
+  (renderHtmlElement v))
 
-  (if as-string?
-      (let* ((os (open-output-string)))
-        (print rendered os)
-        (get-output-string os))
-      rendered))
-
+  
