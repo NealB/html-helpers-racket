@@ -19,11 +19,14 @@
          (rows 10)
          (cols 100)
          (placeholder "Type html helper expression here")
-         "(div.foo.bar.#foobar-id
+#<<END
+(div.foo.bar.#foobar-id
   (ul
-    (li \"one\")
-    (li \"two\"))
-  \"Lorem ipsum\")"))
+    (li "one")
+    (li "two"))
+  "Lorem ipsum")
+END
+))
 
        (.col
         (textarea
