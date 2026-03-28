@@ -1,5 +1,16 @@
 (include/reader "webracket-util.rkt" read-syntax/skip-first-line)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
+;(include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
+
+(define default-helper-sexp
+#<<END
+(div.foo.bar.#foobar-id
+  (ul
+    (li "one")
+    (li "two"))
+  "Lorem ipsum")
+END
+)
 
 (define test-sxml
   (renderHtmlElement
@@ -19,14 +30,7 @@
          (rows 10)
          (cols 100)
          (placeholder "Type html helper expression here")
-#<<END
-(div.foo.bar.#foobar-id
-  (ul
-    (li "one")
-    (li "two"))
-  "Lorem ipsum")
-END
-))
+         default-helper-sexp))
 
        (.col
         (textarea
@@ -40,7 +44,24 @@ END
         (button:button
          .btn.btn-success
          .#convert-helper-string
-         "Convert")))))))
+         "Convert")))
+
+      (.row
+       (.col
+        (textarea
+         .#html-input .form-control $html-input
+         (rows 10)
+         (cols 100)
+         (placeholder "Type html here")
+         default-helper-sexp))
+
+       (.col
+        (textarea
+         .#reverse-output-display .form-control
+         (readonly "readonly")
+         (rows 10)
+         )))
+      ))))
 
 (define content
   (sxml->dom (car test-sxml)))

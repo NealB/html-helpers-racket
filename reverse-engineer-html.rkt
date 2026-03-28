@@ -1,5 +1,5 @@
-#lang racket
-(require html-parsing sxml threading)
+#lang webracket
+;(require html-parsing sxml threading)
 ;(require "HtmlHelpersRacket.rkt")
 
 (define html1
@@ -85,7 +85,7 @@
   <button type='submit' class='btn btn-primary'>Sign in</button>
 </form>")
 
-(define xexp (html->xexp html3))
+;(define xexp (html->xexp html3))
 
 
 (define (prune-blanks sexps)
@@ -127,26 +127,15 @@
 ;      `(,(car sexps) ,@(or attlist '()) ,@(if (null? child-list) '() `((Children ,@child-list))))))))
       
 
-(define helpers
-  (~> xexp
-      prune-blanks
-      second
-      convert-to-helpers))
+;(define helpers
+;  (~> xexp
+;      prune-blanks
+;      second
+;      convert-to-helpers))
 
-(pretty-print helpers)
+(define (reverse-engineer html)
+  (define xexp (html->xexp html))
+  (convert-to-helpers (second (prune-blanks xexp))))
 
-#| (printf "~n^^ helpers~n~n")
-   
-   
-   
-   (define rendered (renderHtmlElements helpers))
-   
-   (pretty-print rendered)
-   
-   (printf "~n~n~A~n" (srl:sxml->xml rendered))
-   
-   (with-output-to-file "html_samples/exampleModal.rkt" #:exists 'replace
-        (lambda ()
-          (pretty-print helpers)))
-          ;(printf "~A~n" (srl:sxml->xml xexp))))
- |#
+;(pretty-print helpers)
+
