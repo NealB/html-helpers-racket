@@ -1,6 +1,7 @@
 (include/reader "webracket-util.rkt" read-syntax/skip-first-line)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
-;(include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
+(include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
+
 
 (define default-helper-sexp
 #<<END
@@ -12,59 +13,68 @@
 END
 )
 
-(define test-sxml
-  (renderHtmlElement
-   `(div
-     (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"))
+(define page-desc
+  `(div
+    (Stylesheet (href "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"))
 
-     (script .#prettier1 (src "https://unpkg.com/prettier@3.8.1/standalone.js"))
-     (script .#prettier2 (src "https://unpkg.com/prettier@3.8.1/plugins/html.js"))
+    (script .#prettier1 (src "https://unpkg.com/prettier@3.8.1/standalone.js"))
+    (script .#prettier2 (src "https://unpkg.com/prettier@3.8.1/plugins/html.js"))
 
-     (.container-fluid
-      (h3 "Convert s-expressions to html")
+    ;(script .#rxjs (src "https://unpkg.com/rxjs@%5E7/dist/bundles/rxjs.umd.min.js"))
+     
+    (.container-fluid
+     (h3 "Convert s-expressions to html")
 
-      (.row
-       (.col
-        (textarea
-         .#helper-text-input .form-control $helper-text-input
-         (rows 10)
-         (cols 100)
-         (placeholder "Type html helper expression here")
-         default-helper-sexp))
+     (.row
+      (.col
+       (textarea
+        .form-control .#helper-text-input $helper-text-input
+        (rows 10)
+        (cols 100)
+        (placeholder "Type html helper expression here")
+        ,default-helper-sexp))
 
-       (.col
-        (textarea
-         .#output-display .form-control
-         (readonly "readonly")
-         (rows 10)
-         )))
+      (.col
+       (textarea
+        .form-control .#output-display
+        (readonly "readonly")
+        (rows 10)
+        )))
 
-      (.row
-       (.col
-        (button:button
-         .btn.btn-success
-         .#convert-helper-string
-         "Convert")))
+     (.row
+      (.col
+       (button:button
+        .btn.btn-success
+        .#convert-helper-string
+        "Convert")))
 
-      (.row
-       (.col
-        (textarea
-         .#html-input .form-control $html-input
-         (rows 10)
-         (cols 100)
-         (placeholder "Type html here")
-         default-helper-sexp))
+     (.row
+      (.col
+       (textarea
+        .form-control $html-input.#html-input
+        (rows 10)
+        (cols 100)
+        (placeholder "Type html here")))
 
-       (.col
-        (textarea
-         .#reverse-output-display .form-control
-         (readonly "readonly")
-         (rows 10)
-         )))
-      ))))
+      (.col
+       (textarea
+        .form-control .#reverse-output-display
+        (readonly "readonly")
+        (rows 10)
+        )))
+     )))
+
+
+(define page-sxml
+  (renderHtmlElement page-desc))
+
+(import-js-symbols document)
+
+(define (get-elements-by-class-name c)
+  (call! document.getElementsByClassName c))
 
 (define content
-  (sxml->dom (car test-sxml)))
+  (sxml->dom (car page-sxml)))
 
 (define body (js-document-body))
 (js-append-child! body content)
@@ -110,15 +120,15 @@ END
 (on-do! (html# helper-text-input) input _
         (display-converted write-output-display-value))
 
-(on-do! (html# prettier1) load _
-        (set! prettier-loaded-count (+ 1 prettier-loaded-count))
-        (format-when-ready))
+(for ((id '("prettier1" "prettier2")))
+  (define element (js-get-element-by-id id))
 
-(on-do! (html# prettier2) load _
-        (set! prettier-loaded-count (+ 1 prettier-loaded-count))
-        (format-when-ready))
+  (on-do! element load _
+          (set! prettier-loaded-count (+ 1 prettier-loaded-count))
+          (format-when-ready)))
 
 
 (assign! global.split_attribute_short_strings (procedure->external split_attribute_short_strings))
 (assign! global.render_html_element (procedure->external render_html_element))
 
+(include/reader "rxjs-playing.rkt" read-syntax/skip-first-line)
