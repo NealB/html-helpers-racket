@@ -148,13 +148,8 @@
                  (attlist (for/list ((i (in-range 0 (get! attributes.length))))
                             (define att (call! attributes.item i))
                             (js-log att)
-                            (list (string->symbol (get! att.name)) (get! att.value))
-                            ))
-                 #;(attlist (list attlist0))
-                 
-                 ;(children (if (not (null? attlist))
-                 ;              (cddr node)
-                 ;              (cdr node)))
+                            (list (string->symbol (get! att.name)) (get! att.value))))
+
                  (childNodes (get! node.childNodes))
                  (children (for/list ((i (in-range 0 (get! childNodes.length)))) (call! childNodes.item i)))
                  (converted-children (map convert-to-helpers-df children))
@@ -187,8 +182,8 @@
 
 (assign! global.converted_to_helpers helper-output-string)
 
-;(define reverse-output-display (html# reverse-output-display))
-;(assign! reverse-output-display.innerText str)
+(define reverse-output-display (html# reverse-output-display))
+(assign! reverse-output-display.value helper-output-string)
 
 ;      `(,(car sexps) ,@(or attlist '()) ,@(if (null? child-list) '() `((Children ,@child-list))))))))
 
@@ -197,9 +192,9 @@
  ;         (assign! reverse-output-display.innerText str)
   ;        )
 
-(on-do! (html# convert-helper-string) click _
-        (define reverse-output-display (html# reverse-output-display))
-        (assign! reverse-output-display.value helper-output-string))
+;(on-do! (html# convert-helper-string) click _
+;        (define reverse-output-display (html# reverse-output-display))
+;        (assign! reverse-output-display.value helper-output-string))
         
 ;(define (reverse-engineer html)
 ;  (define xexp (html->xexp html))

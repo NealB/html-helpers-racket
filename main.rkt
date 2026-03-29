@@ -1,6 +1,6 @@
 (include/reader "webracket-util.rkt" read-syntax/skip-first-line)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
-(include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
+(require-lib threading)
 
 
 (define default-helper-sexp
@@ -11,7 +11,24 @@
     (li "two"))
   "Lorem ipsum")
 END
-)
+  )
+
+(define default-html
+#<<END
+  <div class="card">
+  &quot;
+  <img class="card-img-top" src="/images/pathToYourImage.png" alt="Card image cap">
+  <div class="card-body">
+    <h4 class="card-title">Card title</h4>
+    <p class="card-text">
+      Some quick example text to build on the card title
+      and make up the bulk of the card"s content.
+    </p>
+    <a href="#!" class="btn btn-primary">Go somewhere</a>
+  </div>
+</div>
+END
+  )
 
 (define page-desc
   `(div
@@ -28,6 +45,7 @@ END
      (.row
       (.col
        (textarea
+        .northwest
         .form-control .#helper-text-input $helper-text-input
         (rows 10)
         (cols 100)
@@ -36,6 +54,7 @@ END
 
       (.col
        (textarea
+        .northeast
         .form-control .#output-display
         (readonly "readonly")
         (rows 10)
@@ -51,13 +70,16 @@ END
      (.row
       (.col
        (textarea
+        .southwest
         .form-control $html-input.#html-input
         (rows 10)
         (cols 100)
-        (placeholder "Type html here")))
+        (placeholder "Type html here")
+        ,default-html))
 
       (.col
        (textarea
+        .southeast
         .form-control .#reverse-output-display
         (readonly "readonly")
         (rows 10)
@@ -104,6 +126,7 @@ END
     (call! format-result-promise.then (procedure->external continuation))    
     (void)))
 
+(include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
 
 (define prettier-loaded-count 0)
 
@@ -130,5 +153,6 @@ END
 
 (assign! global.split_attribute_short_strings (procedure->external split_attribute_short_strings))
 (assign! global.render_html_element (procedure->external render_html_element))
+
 
 (include/reader "rxjs-playing.rkt" read-syntax/skip-first-line)
