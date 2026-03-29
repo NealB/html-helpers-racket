@@ -34,7 +34,7 @@
         '(js-global-this)
         (string->symbol obj-tok)))
   
-  (datum->syntax stx `(js-ref! ,obj ,property)))
+  (datum->syntax stx `(js-ref ,obj ,property)))
 
 ;(define-syntax (html# stx)
   ; takes an argument id and returns the html element with that id

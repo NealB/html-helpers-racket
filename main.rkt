@@ -114,8 +114,8 @@ END
 (define (write-output-display-value s)
   (assign! output-display.value s))
 
-(on-do! (html# convert-helper-string) click _
-        (display-converted write-output-display-value))
+;(on-do! (html# convert-helper-string) click _
+;        (display-converted write-output-display-value))
 
 (on-do! (html# helper-text-input) input _
         (display-converted write-output-display-value))

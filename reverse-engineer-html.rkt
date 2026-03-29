@@ -139,19 +139,27 @@
 
 
 (define (convert-to-helpers-df node)
-  (define name (get! node.nodeName))
+  (define name (string-downcase (get! node.nodeName)))
   (if (equal? name "#text")
       (get! node.textContent)
       ;(if (eq? (car sexps) '&)
       ;    sexps
           (let* ((attributes (get! node.attributes))
-                 (attlist (and (pair? sexps) (pair? (cadr sexps)) (eq? (caadr sexps) '@) (cdadr sexps)))
-                 (children (if attlist
-                               (cddr sexps)
-                               (cdr sexps)))
-                 (converted-children (map convert-to-helpers children))
+                 (attlist (for/list ((i (in-range 0 (get! attributes.length))))
+                            (define att (call! attributes.item i))
+                            (js-log att)
+                            (list (string->symbol (get! att.name)) (get! att.value))
+                            ))
+                 #;(attlist (list attlist0))
+                 
+                 ;(children (if (not (null? attlist))
+                 ;              (cddr node)
+                 ;              (cdr node)))
+                 (childNodes (get! node.childNodes))
+                 (children (for/list ((i (in-range 0 (get! childNodes.length)))) (call! childNodes.item i)))
+                 (converted-children (map convert-to-helpers-df children))
                  (child-list (map child-node-to-element converted-children)))
-            `(,(car sexps) ,@(or attlist '())
+            `(,(string->symbol name) ,@(or attlist '())
                            ,@(cond
                                ((null? child-list) '())
                                ((string? child-list) child-list)
@@ -172,15 +180,27 @@
 (assign! global.html_2_frag_root frag_root)
 
 
+(define helpers-from-dom (convert-to-helpers-df frag_root))
+(define os (open-output-string))
+(write helpers-from-dom os)
+(define helper-output-string (get-output-string os))
 
-(convert-to-helpers-df frag_root)
+(assign! global.converted_to_helpers helper-output-string)
+
+;(define reverse-output-display (html# reverse-output-display))
+;(assign! reverse-output-display.innerText str)
 
 ;      `(,(car sexps) ,@(or attlist '()) ,@(if (null? child-list) '() `((Children ,@child-list))))))))
 
+;(on-do! dom_document load _
+;          (define reverse-output-display (html# reverse-output-display))
+ ;         (assign! reverse-output-display.innerText str)
+  ;        )
 
-
-
-
+(on-do! (html# convert-helper-string) click _
+        (define reverse-output-display (html# reverse-output-display))
+        (assign! reverse-output-display.value helper-output-string))
+        
 ;(define (reverse-engineer html)
 ;  (define xexp (html->xexp html))
 ;  (convert-to-helpers (second (prune-blanks xexp))))
