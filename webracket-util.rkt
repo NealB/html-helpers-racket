@@ -1,5 +1,5 @@
 #lang webracket
-(require (for-syntax racket/base racket/match racket/string racket/format))
+(require (for-syntax racket/base racket/match racket/string racket/format threading))
 
 
 (define-syntax (call! stx)
@@ -7,9 +7,13 @@
   ; example:
   ;   (call! format-result-promise.then (procedure->external prettier-format-callback))
   (match-define (list _ dotted-name args ...) (syntax->list stx))
-  (match-define (list obj method) (string-split (~a (syntax->datum dotted-name)) "."))
+  (match-define (list obj-tok method) (string-split (~a (syntax->datum dotted-name)) "."))
+  (define obj
+    (if (string=? obj-tok "global")
+        '(js-global-this)
+        (string->symbol obj-tok)))
   
-  (datum->syntax stx `(js-send ,(string->symbol obj) ,method  (vector ,@args))))
+  (datum->syntax stx `(js-send ,obj ,method  (vector ,@args))))
 
 
 (define-syntax (assign! stx)

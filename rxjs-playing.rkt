@@ -38,12 +38,6 @@
           (%pipe-to obs func args ...)
           (js-send obs "pipe" (vector (%rx func args ...)))) 
         
-        ;(js-log rxjs)
-        ;(define ajax (get! rxjs.ajax))
-        ;(define ajax (get! ajax0.ajax))
-        ;(js-log ajax)
-       ; (define (pipe-to obs . args)
-        ;  (js-send obs "pipe" (list->vector args)))
         
         (~~>
           (%rx concat
@@ -53,25 +47,46 @@
                   
                   (%pipe-to "map"
                             (external-lambda (x _)
-                                             (procedure-rename
-                                              ((λ ()
-                                                (js-log "ajax obj ->")
-                                                ;(js-log (get! rxjs.ajax))
-                                                (define ajax0 (get! rxjs.ajax))
-                                                (js-log ajax0)
-                                                ;(assign! global.rxjs_ajax ajax)
-                                                 (define ajax (get! ajax0.ajax))
-                                                 (js-log ajax)
-                                                 ;(define result (js-send ajax "getJSON" (vector "/GetStatsAjax")))
-                                                 
-                                                 (define result (call! ajax0.ajax "/GetStatsAjax"))
-                                                 (js-log "sent ajax")
-                                                 (js-log result)
-                                                 result
-                                                 )) 'ajax-block)))
+                                             (js-log "in first map")
+                                             ;(js-log "got global; will call fetch")
+                                             (define prom (call! global.fetch "http://neal2500k:8080/GetStatsAjax"))
+                                             ;(define prom (call! global.fromFetch "http://neal2500k:8080/GetStatsAjax"))
+                                             (js-log "sent ajax")
+                                             ;(call! rxjs.from prom)
+                                             (call! rxjs.from prom)
+                                             ))
+
+                  ;(%pipe-to "switchMap"
+                  ;          (external-lambda (x _)
+                  ;                           (js-log "in switch map")
+                  ;                           (js-log x)
+                  ;                           (call! x.json)))
 
                   (%pipe-to "mergeAll")
+
+                  (%pipe-to "map"
+                            (external-lambda (x _)
+                                             (js-log "map got... x ->")
+                                             (js-log x)
+                                             (define y (call! x.json))
+                                             (js-log "y =")
+                                             (js-log y)
+                                             (call! rxjs.from y)))
                   
+                  (%pipe-to "mergeAll")
+
+                  (%pipe-to "map"
+                            (external-lambda (z _)
+                                             (js-log "map got... z ->")
+                                             (js-log z)
+
+                                             (define con (get! global.Observable))
+                                             (js-new con (vector
+                                                          (external-lambda (subscriber)
+                                                                           )
+
+                                             z))
+                                    
                  #|  #;(==> (%rx map (external-lambda (x _)
                                                       (js-log "ajax obj ->")
                                                       (js-log (get! rxjs.ajax))
