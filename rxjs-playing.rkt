@@ -51,26 +51,32 @@
                  (~~>
                   (%rx timer 2 1000)
                   
-                  (%pipe-to "map" ;(procedure-rename
-                                   (external-lambda (x _)
-                                                                     (js-log "ajax obj ->")
-                                                                     ;(js-log (get! rxjs.ajax))
-                                                                     (define ajax (get! rxjs.ajax))
-                                                                     (js-log ajax)
-                                                                     ;(assign! global.rxjs_ajax ajax)
-                                                                     ;(call! ajax.getJSON "/GetStatsAjax")
-                                                                     (js-send ajax "getJSON" (vector "/GetStatsAjax"))
-                                                                     ;(js-log "sent ajax")
-                                                                     ))
-                                   ;'the-ajax-fn))
+                  (%pipe-to "map"
+                            (external-lambda (x _)
+                                             (procedure-rename
+                                              ((λ ()
+                                                (js-log "ajax obj ->")
+                                                ;(js-log (get! rxjs.ajax))
+                                                (define ajax0 (get! rxjs.ajax))
+                                                (js-log ajax0)
+                                                ;(assign! global.rxjs_ajax ajax)
+                                                 (define ajax (get! ajax0.ajax))
+                                                 (js-log ajax)
+                                                 ;(define result (js-send ajax "getJSON" (vector "/GetStatsAjax")))
+                                                 
+                                                 (define result (call! ajax0.ajax "/GetStatsAjax"))
+                                                 (js-log "sent ajax")
+                                                 (js-log result)
+                                                 result
+                                                 )) 'ajax-block)))
                   
-                  #;(==> (%rx map (external-lambda (x _)
-                                                   (js-log "ajax obj ->")
-                                                   (js-log (get! rxjs.ajax))
-                                                   (define ajax (get! rxjs.ajax))
-                                                   (call! ajax.getJSON "/GetStatsAjax")
-                                                   )))
-                  
+                 #|  #;(==> (%rx map (external-lambda (x _)
+                                                      (js-log "ajax obj ->")
+                                                      (js-log (get! rxjs.ajax))
+                                                      (define ajax (get! rxjs.ajax))
+                                                      (call! ajax.getJSON "/GetStatsAjax")
+                                                      )))
+                   |#
                   
                   
                  
