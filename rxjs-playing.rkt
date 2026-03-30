@@ -38,10 +38,10 @@
           (%pipe-to obs func args ...)
           (js-send obs "pipe" (vector (%rx func args ...)))) 
         
-        (js-log rxjs)
-        (define ajax (get! rxjs.ajax))
+        ;(js-log rxjs)
+        ;(define ajax (get! rxjs.ajax))
         ;(define ajax (get! ajax0.ajax))
-        
+        ;(js-log ajax)
        ; (define (pipe-to obs . args)
         ;  (js-send obs "pipe" (list->vector args)))
         
@@ -51,16 +51,18 @@
                  (~~>
                   (%rx timer 2 1000)
                   
-                  (%pipe-to "map" (procedure-rename (external-lambda (x _)
+                  (%pipe-to "map" ;(procedure-rename
+                                   (external-lambda (x _)
                                                                      (js-log "ajax obj ->")
                                                                      ;(js-log (get! rxjs.ajax))
-                                                                     ;(define ajax (get! rxjs.ajax))
+                                                                     (define ajax (get! rxjs.ajax))
                                                                      (js-log ajax)
                                                                      ;(assign! global.rxjs_ajax ajax)
                                                                      ;(call! ajax.getJSON "/GetStatsAjax")
                                                                      (js-send ajax "getJSON" (vector "/GetStatsAjax"))
                                                                      ;(js-log "sent ajax")
-                                                                     ) 'the-ajax-fn))
+                                                                     ))
+                                   ;'the-ajax-fn))
                   
                   #;(==> (%rx map (external-lambda (x _)
                                                    (js-log "ajax obj ->")
