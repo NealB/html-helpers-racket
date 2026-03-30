@@ -69,6 +69,8 @@
                                                  (js-log result)
                                                  result
                                                  )) 'ajax-block)))
+
+                  (%pipe-to "mergeAll")
                   
                  #|  #;(==> (%rx map (external-lambda (x _)
                                                       (js-log "ajax obj ->")
