@@ -30,13 +30,20 @@
            
         (import-js-symbols rxjs)
 
-        (define-syntax-rule (%rx func args ...)
+        (define-syntax-rule
+          (%rx func args ...)
           (js-send rxjs (~a (quote func)) (vector args ...)))
+
+        (define-syntax-rule
+          (%pipe-to obs func args ...)
+          (js-send obs "pipe" (vector (%rx func args ...)))) 
         
         (js-log rxjs)
-   
-        (define (==> obs . args)
-          (js-send obs "pipe" (list->vector args)))
+        (define ajax (get! rxjs.ajax))
+        ;(define ajax (get! ajax0.ajax))
+        
+       ; (define (pipe-to obs . args)
+        ;  (js-send obs "pipe" (list->vector args)))
         
         (~~>
           (%rx concat
@@ -44,16 +51,24 @@
                  (~~>
                   (%rx timer 2 1000)
                   
-                  (==> (%rx map (external-lambda (x _)
-                                                 (js-log "ajax obj ->")
-                                                 (js-log (get! global.ajax))
-                                                 (define ajax_ (get! global.ajax))
-                                                 (call! ajax_.getJSON "/GetStatsAjax")
-                                                 )))
+                  (%pipe-to "map" (procedure-rename (external-lambda (x _)
+                                                                     (js-log "ajax obj ->")
+                                                                     ;(js-log (get! rxjs.ajax))
+                                                                     ;(define ajax (get! rxjs.ajax))
+                                                                     (js-log ajax)
+                                                                     ;(assign! global.rxjs_ajax ajax)
+                                                                     ;(call! ajax.getJSON "/GetStatsAjax")
+                                                                     (js-send ajax "getJSON" (vector "/GetStatsAjax"))
+                                                                     ;(js-log "sent ajax")
+                                                                     ) 'the-ajax-fn))
                   
                   #;(==> (%rx map (external-lambda (x _)
-                                                   (js-log x)
-                                                   x)))
+                                                   (js-log "ajax obj ->")
+                                                   (js-log (get! rxjs.ajax))
+                                                   (define ajax (get! rxjs.ajax))
+                                                   (call! ajax.getJSON "/GetStatsAjax")
+                                                   )))
+                  
                   
                   
                  
