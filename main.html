@@ -292,6 +292,33 @@ function js_value_to_fasl(v) {
   return Uint8Array.from(out);
 }
 
+const websocket_impl = {
+  'new': ((url, protocols) => {
+    const u = from_fasl(url);
+    const p = from_fasl(protocols);
+    return p === undefined ? new WebSocket(u) : new WebSocket(u, p);
+  }),
+  'send': ((ws, data) => ws.send(from_fasl(data))),
+  'close': ((ws, code, reason) => {
+    const c = from_fasl(code);
+    const r = from_fasl(reason);
+    if (c === undefined && r === undefined) {
+      ws.close();
+    } else if (r === undefined) {
+      ws.close(c);
+    } else if (c === undefined) {
+      ws.close(1000, r);
+    } else {
+      ws.close(c, r);
+    }
+  }),
+  'url': (ws => ws.url),
+  'ready-state': (ws => ws.readyState),
+  'buffered-amount': (ws => ws.bufferedAmount),
+  'protocol': (ws => ws.protocol),
+  'extensions': (ws => ws.extensions)
+};
+
 function is_pair(v) {
     return v && typeof v === 'object' && v.tag === 'pair'
 }
@@ -435,6 +462,15 @@ const hasDOM = typeof document !== 'undefined' && typeof document.createTextNode
 // hasXterm indicates whether XTermJS is available
 // const hasXterm = typeof Terminal !== 'undefined';
 const hasXterm = true;
+
+const websocket = new Proxy({}, {
+  get(_target, prop) {
+    if (typeof globalThis.WebSocket === 'undefined') {
+      return () => { throw new Error(`WebSocket not available in this environment: ${String(prop)}`); };
+    }
+    return websocket_impl[prop];
+  }
+});
 
 function from_fasl(index) {
     return fasl_to_js_value(new Uint8Array(memory.buffer), index)[0]
@@ -759,10 +795,10 @@ var imports = {
       'nan?':                      ((x) => isNaN(x) ? 1 : 0),
       'parse-float':               ((s) => parseFloat(from_fasl(s))),
       'parse-int':                 ((s) => parseInt(from_fasl(s))),
-      'decode-uri':                ((s) => to_string( decodeURI(from_fasl(s)))),
-      'decode-uri-component':      ((s) => to_string( decodeURIComponent(from_fasl(s)))),
-      'encode-uri':                ((s) => to_string( encodeURI(from_fasl(s)))),
-      'encode-uri-component':      ((s) => to_string( encodeURIComponent(from_fasl(s)))),
+      'decode-uri':                ((s) => decodeURI(from_fasl(s))),
+      'decode-uri-component':      ((s) => decodeURIComponent(from_fasl(s))),
+      'encode-uri':                ((s) => encodeURI(from_fasl(s))),
+      'encode-uri-component':      ((s) => encodeURIComponent(from_fasl(s))),
       'var':                       ((name) => globalThis[from_fasl(name)]),
       'ref/value':                 ((obj, key) => to_fasl(obj[from_fasl(key)])),
       'ref/extern':                ((obj, key) => obj[from_fasl(key)]),
@@ -823,8 +859,8 @@ var imports = {
       'array/extern':               (args => { const as = from_fasl(args);
                                               return [...( as ? as : [])]
                                     }),
-      'typeof':                    ((obj) => to_string(typeof obj)),
-      'value->string':             ((obj) => to_string(String(obj))),
+      'typeof':                    ((obj) => typeof obj),
+      'value->string':             ((obj) => String(obj)),
       'instanceof':                ((obj, type) => (obj instanceof type) ? 1 : 0),
       'operator':                  ((op, operands) => {
                                      const o = from_fasl(op);
@@ -888,11 +924,11 @@ var imports = {
       'Iterator':                  (() => (typeof Iterator === 'undefined' ? undefined : Iterator)),
       'AsyncIterator':             (() => (typeof AsyncIterator === 'undefined' ? undefined : AsyncIterator)),
       'Promise':                   (() => Promise),
-      'GeneratorFunction':         (() => (typeof GeneratorFunction === 'undefined' ? undefined : GeneratorFunction)),
-      'AsyncGeneratorFunction':    (() => (typeof AsyncGeneratorFunction === 'undefined' ? undefined : AsyncGeneratorFunction)),
-      'Generator':                 (() => (typeof Generator === 'undefined' ? undefined : Generator)),
-      'AsyncGenerator':            (() => (typeof AsyncGenerator === 'undefined' ? undefined : AsyncGenerator)),
-      'AsyncFunction':             (() => (typeof AsyncFunction === 'undefined' ? undefined : AsyncFunction)),
+      'GeneratorFunction':         (() => (function*(){}).constructor),
+      'AsyncGeneratorFunction':    (() => (async function*(){}).constructor),
+      'Generator':                 (() => Object.getPrototypeOf(function*(){}())),
+      'AsyncGenerator':            (() => Object.getPrototypeOf(async function*(){}())),
+      'AsyncFunction':             (() => (async function(){}).constructor),
       'DisposableStack':           (() => (typeof DisposableStack === 'undefined' ? undefined : DisposableStack)),
       'AsyncDisposableStack':     (() => (typeof AsyncDisposableStack === 'undefined' ? undefined : AsyncDisposableStack)),
       'Reflect':                   (() => Reflect),
@@ -978,25 +1014,24 @@ var imports = {
         // Convert number to exponential notation.
         'to-exponential':    ((x, fd) => {
                                  const d = from_fasl(fd);
-                                 const r = d === undefined ? x.toExponential() : x.toExponential(d);
-                                 return to_fasl(r);
+                                 return d === undefined ? x.toExponential() : x.toExponential(d);
                                }),
         // Format number with fixed-point notation.
         'to-fixed':          ((x, digits) => {
                                  const d = from_fasl(digits);
-                                 return to_fasl( d === undefined ? x.toFixed() : x.toFixed(d) );
+                                 return d === undefined ? x.toFixed() : x.toFixed(d);
                                }),
         // Format number using locale-specific rules.
-        'to-locale-string':  ((x, locales, options) => to_fasl( x.toLocaleString(from_fasl(locales), from_fasl(options))) ),
+        'to-locale-string':  ((x, locales, options) => x.toLocaleString(from_fasl(locales), from_fasl(options))),
         // Format number with specified precision.
         'to-precision':      ((x, precision) => {
                                  const p = from_fasl(precision);
-                                 return to_fasl( p === undefined ? x.toPrecision() : x.toPrecision(p) );
+                                 return p === undefined ? x.toPrecision() : x.toPrecision(p);
                                }),
         // Convert number to string with optional radix.
         'to-string':         ((x, radix) => {
                                  const r = from_fasl(radix);
-                                 return to_fasl( r === undefined ? x.toString() : x.toString(r) );
+                                 return r === undefined ? x.toString() : x.toString(r);
                                }),
         // Extract primitive numeric value.
         'value-of':          (x => x.valueOf())
@@ -1475,6 +1510,7 @@ var imports = {
     'performance': hasDOM ? {
         'now':                 (() => performance.now())
     } : new Proxy({}, { get() { throw new Error('DOM not available in this environment'); } }),
+    'websocket': websocket,
     // Document
     'document': hasDOM ? {
         'document':                 (()                               => document),

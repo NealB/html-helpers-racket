@@ -7,13 +7,19 @@
   ; example:
   ;   (call! format-result-promise.then (procedure->external prettier-format-callback))
   (match-define (list _ dotted-name args ...) (syntax->list stx))
-  (match-define (list obj-tok method) (string-split (~a (syntax->datum dotted-name)) "."))
+  (match-define (list-rest obj-tok properties) (string-split (~a (syntax->datum dotted-name)) "."))
   (define obj
     (if (string=? obj-tok "global")
         '(js-global-this)
         (string->symbol obj-tok)))
   
-  (datum->syntax stx `(js-send ,obj ,method  (vector ,@args))))
+  (define-values (result method)
+       (let loop ((props properties) (current-obj obj))
+         (if (= (length props) 1)
+             (values current-obj (car props))
+          (loop (cdr props) `(js-ref ,current-obj ,(car props))))))
+  
+  (datum->syntax stx `(js-send ,result ,method  (vector ,@args))))
 
 
 (define-syntax (assign! stx)
@@ -32,13 +38,18 @@
 
 (define-syntax (get! stx)
   (match-define (list _ dotted-name) (syntax->list stx))
-  (match-define (list obj-tok property) (string-split (~a (syntax->datum dotted-name)) "."))
+  (match-define (list-rest obj-tok properties) (string-split (~a (syntax->datum dotted-name)) "."))
   (define obj
     (if (string=? obj-tok "global")
         '(js-global-this)
         (string->symbol obj-tok)))
-  
-  (datum->syntax stx `(js-ref ,obj ,property)))
+
+  (define result
+    (let loop ((props properties) (current-obj obj))
+      (if (null? props)
+          current-obj
+          (loop (cdr props) `(js-ref ,current-obj ,(car props))))))
+  (datum->syntax stx result))
 
 ;(define-syntax (html# stx)
   ; takes an argument id and returns the html element with that id
@@ -70,7 +81,7 @@
   ; example:
   ;   (import-js-symbols prettier prettierPlugins)
   (syntax-rules ()
-    [(import-js-symbols name) (define name (js-ref/extern (js-global-this) (~a (quote name))))]
+    [(import-js-symbols name) (define name (js-var (~a (quote name))))]
     [(import-js-symbols name name-rest ...)
      (begin (import-js-symbols name) (import-js-symbols name-rest ...))
      ]))
