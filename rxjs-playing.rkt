@@ -29,6 +29,12 @@
   (write v os)
   (js-log (get-output-string os)))
 
+(define (js-log-fmt fmt . args)
+  (js-log (apply format fmt args)))
+
+(define (js-object* . entries)
+  (js-object
+   (list->vector (map list->vector entries))))
 
 (on-do! (html# rxjs) load _
         (js-log "rxjs loaded")
@@ -53,7 +59,7 @@
                (! mergeMap
                   (external-lambda (x _)
 
-                                   (js-log "sending ajax")
+                                   ;(js-log "sending ajax")
 
                                    (call! rxjs.ajax.ajax (js-object
                                                           #(#("url" "http://neal2500k:8080/GetStatsAjax")
@@ -64,96 +70,54 @@
                (! map
                   (external-lambda (x _)
                                    (define y (get! x.response))
-                                   (js-log "y =")
-                                   (js-log y)
+                                   ;(js-log "y =")
+                                   ;(js-log y)
                                    y
-                                   ))
-
-               #;(! map
-                  (external-lambda (z _)
-                                   (js-log "map got... z ->")
-                                   (js-log z)
-
-                                   (define milky (js-ref z "http://milkyway.cs.rpi.edu/milkyway/"))
-                                   (js-log "milky:")
-                                   (js-log milky)
-
-                                   
-                                   (call! Object.keys z)
-                                   
                                    ))
 
                (! pairwise)
 
-
-               ;(match-define (list-rest obj-tok properties) (string-split (~a (syntax->datum dotted-name)) "."))
-               (! concatMap
+               (! map
                   (external-lambda (pairArray _)
-                                   (js-log "old, new ->")
-
                                    (define old (vector-ref pairArray 0))
                                    (define new (vector-ref pairArray 1))
 
-                                   (js-log old)
-                                   (js-log new)
-
                                    (define oldVec (call! Object.entries old))
                                    (define oldAssoc (for/list ((a (in-vector oldVec)))
-                                                      (let* ((l (vector->list a))
-                                                             (c (apply cons l)))
-                                                        c)))
-                                   (define oldHash (make-hash oldAssoc))
-                                   (js-log "oldHash")
-                                   (js-log* oldHash)
-                  
+                                                      (let* ((l (vector->list a)))
+                                                        (apply cons l))))
+
                                    (define newVec (call! Object.entries new))
                                    (define newAssoc (for/list ((a (in-vector newVec)))
-                                                      (let* ((l (vector->list a))
-                                                             (c (apply cons l)))
-                                                        c)))
-                                   (define newHash (make-hash newAssoc))
-                                   (js-log "newHash")
-                                   (js-log* newHash)
-                  
-                                   (define differences
-                                     (hash-filter newHash (λ (key value)
-                                                            (not
-                                                             (and
-                                                              (hash-has-key? oldHash key)
-                                                              (= value (hash-ref oldHash key)))))))
-
-                                   (js-log "differences")
-                                   (js-log* differences)
+                                                      (let* ((l (vector->list a)))
+                                                        (apply cons l))))
                                    
-                                   ;(define x
-                                   ;  (match x
-                                   ;    ((vector
-                                   ;      (
-                                  ; 
+                                   (for/list ((key-value (in-list newAssoc))
+                                              #:do ((match-define (cons key-new value-new) key-value))
+                                              #:do ((match-define (cons _       value-old) (assoc key-new oldAssoc)))
+                                              #:when (> value-new value-old))
+                                     
+                                     ;(js-log-fmt "~s -> ~s (diff = ~s)" value-old value-new (- value-new value-old))
+
+                                     (list value-old value-new (- value-new value-old)))))
+
+               (! filter
+                  (external-lambda (diff-list _)
+                                   ;(js-log* diff-list)
+                                   (define result (not (null? diff-list)))
+                                   (when result (js-log-fmt "(not (null? diff-list)) = ~a" result))
+                                   result
                                    ))
-               
-                                   ;(define keys (call! global.Object.keys pairs
-               ;(! mergeAll)    
-               #|  #;(==> (%rx map (external-lambda (x _)
-                                                      (js-log "ajax obj ->")
-                                                      (js-log (get! rxjs.ajax))
-                                                      (define ajax (get! rxjs.ajax))
-                                                      (call! ajax.getJSON "/GetStatsAjax")
-                                                      )))
-                   |#
-
-
                ))
    
          (js-send "subscribe" (vector
-                               (js-object
-                                (vector
-                                 (vector "next" 
-                                         (external-lambda (x)
-                                                          (js-log (format "in subscribe again. external-lambda x: ~a" (js-value->string x)))
-                                                          (js-log x)
-                                                          (js-log "done showing value")
-                                                          )))))))
-        (void))
+                               (js-object*
+                                `("next" 
+                                  ,(external-lambda (x)
+                                                    (js-log (format "in subscribe again. external-lambda x: ~a" (js-value->string x)))
+                                                    (js-log x)
+                                                    (js-log "done showing value")
+                                                    )))))))
+(void))
 
 
