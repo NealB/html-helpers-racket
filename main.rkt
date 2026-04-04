@@ -1,5 +1,6 @@
 (include/reader "webracket-util.rkt" read-syntax/skip-first-line)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
+(include/reader "sxml.rkt" read-syntax/skip-first-line)
 (require-lib threading)
 
 
@@ -102,7 +103,7 @@ END
 (js-append-child! body content)
 
 
-(define output-display (html# output-display))
+;(define output-display (html# output-display))
 
 
 (define (display-converted continuation)
@@ -111,10 +112,12 @@ END
                           (match-define (exn:fail:read msg _ _) e)
                           (continuation (format "~a" msg)))])
 
-    (define str (js-ref (html# helper-text-input) "value"))
+    (define str (get! |#helper-text-input|.value))
     (define sxml-result (render_html_element str))
     (define html-result (sxml->html (car sxml-result)))
 
+    (js-log** "display-converted" html-result)
+    
     (import-js-symbols prettier prettierPlugins)
   
     (define format-result-promise (call! prettier.format
@@ -135,7 +138,7 @@ END
     (display-converted write-output-display-value)))
 
 (define (write-output-display-value s)
-  (assign! output-display.value s))
+  (assign! |#output-display.value| s))
 
 ;(on-do! (html# convert-helper-string) click _
 ;        (display-converted write-output-display-value))
@@ -151,8 +154,8 @@ END
           (format-when-ready)))
 
 
-(assign! global.split_attribute_short_strings (procedure->external split_attribute_short_strings))
-(assign! global.render_html_element (procedure->external render_html_element))
+(assign! split_attribute_short_strings (procedure->external split_attribute_short_strings))
+(assign! render_html_element (procedure->external render_html_element))
 
 
-(include/reader "rxjs-playing.rkt" read-syntax/skip-first-line)
+;(include/reader "rxjs-playing.rkt" read-syntax/skip-first-line)

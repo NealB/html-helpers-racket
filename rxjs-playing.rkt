@@ -7,117 +7,81 @@
 (js-append-child! (js-document-head) (sxml->dom (car rxjs-script)))
 
 
-;#;(define-syntax-rule (%rx func args ...)
-;    (js-send rxjs (~a (quote func)) (vector args ...)))
 
-
-;(define-syntax (pipe stx)
-;  (match-define (list _ source operators ...) (syntax->list stx))
-  ;(match-define (list obj method) (string-split (~a (syntax->datum dotted-name)) "."))
-  
-;  (datum->syntax stx `(js-send ,(string->symbol obj) ,method  (vector ,@args))))
-
-
-;(define-syntax-rule (pipe~> init funcs ...)
-;  (~~>
-;   init
-   
-  ;(js-send rxjs (~a (quote func)) (vector args ...)))
-
-(define (js-log* v)
-  (define os (open-output-string))
-  (write v os)
-  (js-log (get-output-string os)))
-
-(define (js-log-fmt fmt . args)
-  (js-log (apply format fmt args)))
-
-(define (js-object* . entries)
-  (js-object
-   (list->vector (map list->vector entries))))
 
 (on-do! (html# rxjs) load _
         (js-log "rxjs loaded")
            
         (import-js-symbols rxjs Object)
 
-        (define-syntax-rule
-          (%rx func args ...)
-          (js-send rxjs (~a (quote func)) (vector args ...)))
+        (define (wrap-with-subject obs)
+          (define Subject (get! rxjs.Subject))
+          (define ajax-subject (js-new Subject (vector)))
+        
+          (call! obs.subscribe ajax-subject)
 
-        (define-syntax-rule
-          (! obs func args ...)
-          (js-send obs "pipe" (vector (%rx func args ...)))) 
-        
-        
-        (~~>
-         (%rx concat
-              (%rx from #(1))
-              (~~>
-               (%rx timer 2 1000)
+          ajax-subject)
+
+        (let* ((ajax-ticks-obs
+
+                (wrap-with-subject
+                 (%rx concat
+                      (%rx from #(1))
+                      (~~>
+                       (%rx timer 2 1000)
                   
-               (! mergeMap
-                  (external-lambda (x _)
+                       (! mergeMap (x _)
+                          (call! rxjs.ajax.ajax (js-object*
+                                                 '(url "http://neal2500k:8080/GetStatsAjax")
+                                                 '(crossDomain #t))))
 
-                                   ;(js-log "sending ajax")
+                       (! map (x _) (get! x.response))
+                       (! pairwise)
 
-                                   (call! rxjs.ajax.ajax (js-object
-                                                          #(#("url" "http://neal2500k:8080/GetStatsAjax")
-                                                            #("crossDomain" #t))))
-                                   ))
+                       (! map (pairArray _)
+                          (define old (vector-ref pairArray 0))
+                          (define new (vector-ref pairArray 1))
 
+                          (define oldVec (call! Object.entries old))
+                          (define oldAssoc (for/list ((a (in-vector oldVec)))
+                                             (apply cons (vector->list a))))
 
-               (! map
-                  (external-lambda (x _)
-                                   (define y (get! x.response))
-                                   ;(js-log "y =")
-                                   ;(js-log y)
-                                   y
-                                   ))
-
-               (! pairwise)
-
-               (! map
-                  (external-lambda (pairArray _)
-                                   (define old (vector-ref pairArray 0))
-                                   (define new (vector-ref pairArray 1))
-
-                                   (define oldVec (call! Object.entries old))
-                                   (define oldAssoc (for/list ((a (in-vector oldVec)))
-                                                      (let* ((l (vector->list a)))
-                                                        (apply cons l))))
-
-                                   (define newVec (call! Object.entries new))
-                                   (define newAssoc (for/list ((a (in-vector newVec)))
-                                                      (let* ((l (vector->list a)))
-                                                        (apply cons l))))
+                          (define newVec (call! Object.entries new))
+                          (define newAssoc (for/list ((a (in-vector newVec)))
+                                             (apply cons (vector->list a))))
                                    
-                                   (for/list ((key-value (in-list newAssoc))
-                                              #:do ((match-define (cons key-new value-new) key-value))
-                                              #:do ((match-define (cons _       value-old) (assoc key-new oldAssoc)))
-                                              #:when (> value-new value-old))
-                                     
-                                     ;(js-log-fmt "~s -> ~s (diff = ~s)" value-old value-new (- value-new value-old))
+                          (for/list ((key-value (in-list newAssoc))
+                                     #:do ((match-define (cons key-new value-new) key-value))
+                                     #:do ((match-define (cons _       value-old) (assoc key-new oldAssoc)))
+                                     #:when (> value-new value-old))
+                                      
+                            (list key-new value-old value-new (- value-new value-old))))))))
 
-                                     (list value-old value-new (- value-new value-old)))))
+               (ajax-changes-obs
+                (~~>
+                 ajax-ticks-obs
+                
+                 (! filter (diff-list _)
+                    (define result (not (null? diff-list)))
+                    (when result (js-log-fmt "(not (null? diff-list)) = ~a" result))
+                    result
+                    ))))
 
-               (! filter
-                  (external-lambda (diff-list _)
-                                   ;(js-log* diff-list)
-                                   (define result (not (null? diff-list)))
-                                   (when result (js-log-fmt "(not (null? diff-list)) = ~a" result))
-                                   result
-                                   ))
-               ))
-   
-         (js-send "subscribe" (vector
-                               (js-object*
-                                `("next" 
-                                  ,(external-lambda (x)
-                                                    (js-log (format "in subscribe again. external-lambda x: ~a" (js-value->string x)))
-                                                    (js-log x)
-                                                    (js-log "done showing value")
-                                                    )))))))
-(void))
+
+          (call! ajax-ticks-obs.subscribe
+                 (js-object*
+                  `(next
+                    ,(ext-λ (_)
+                            (js-log "did ajax")
+                            ))))
+
+          (call! ajax-changes-obs.subscribe
+                 (js-object*
+                  `(next
+                    ,(ext-λ (x)
+                            (js-log** "in subscribe again. external-lambda x: " x)
+                            (js-log "done showing value")
+                            )))))
+        (void))
 
 

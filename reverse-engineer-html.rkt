@@ -25,20 +25,70 @@
 </div>")
 
 (define html2
-  "<div class='card'>
-  &quot;
-  <img class='card-img-top' src='/images/pathToYourImage.png' alt='Card image cap'>
-  <div class='card-body'>
-    <h4 class='card-title'>Card title</h4>
-    <p class='card-text'>
-      Some quick example text to build on the card title
-      and make up the bulk of the card's content.
-    </p>
-    <a href='#!' class='btn btn-primary'>Go somewhere</a>
-  </div>
-</div>")
+  "<table class='table table-bordered' id='totals-table'>
+    <colgroup>
+        <col style='width: 25%'>
+        <col style='width: 25%'>
+        <col style='width: 25%'>
+        <col style='width: 25%'>
+    </colgroup>
+    <tbody>
 
-(assign! global.html_2 html2)
+        <tr>
+            <th class='left'>
+                Total CPU (non-Rosetta)
+            </th>
+            <td class='credit-display td-no-grow' style='font-weight: bold'>
+                <span id='total-cpu-non-rosetta-credit' data-credit='106270755' data-displayed-credit='106270755'>106,270,755</span>
+            </td>
+
+            <th class='right'>
+                Astronomy
+            </th>
+            <td class='credit-display td-no-grow'>
+                <span id='astronomy-credit' data-credit='261246368' data-displayed-credit='261246368' data-credit-step='296.4'>261,246,368</span>
+            </td>
+
+
+
+        </tr>
+
+        <tr>
+            <th class='left'>
+                Total CPU
+            </th>
+            <td class='credit-display td-no-grow' style='font-weight: bold'>
+                <span id='total-cpu-credit' data-credit='117888137' data-displayed-credit='117888137'>117,888,137</span>
+            </td>
+
+            <th class='right'>
+                Total GPU
+            </th>
+            <td class='credit-display td-no-grow'>
+                <span id='total-gpu-credit' data-credit='407049201' data-displayed-credit='407049201' data-credit-step='296.4'>407,049,201</span>
+            </td>
+
+        </tr>
+        <tr>
+
+            <th class='left'>
+                All Biology / WCG
+            </th>
+            <td class='credit-display td-no-grow' style='font-weight: bold'>
+                <span id='all-biology-wcg-credit' data-credit='263690970' data-displayed-credit='263690970'>263,690,970</span>
+            </td>
+
+            <th class='right'>
+                Total
+            </th>
+            <td class='credit-display td-no-grow' style='font-weight: bold'>
+                <span id='total-credit' data-credit='524641018' data-displayed-credit='524641018'>524,641,018</span>
+            </td>
+        </tr>
+    </tbody>
+</table>")
+
+(assign! html_2 html2)
 
 (define-proc-external (html3)
      "<form>
@@ -160,11 +210,20 @@
                                ((string? child-list) child-list)
                                (else child-list))))))
 
+(js-log** "here 1" html2)
+
+;(define html-input-value (html# html-input))
+
+(assign! |#html-input|.value html2)
 
 (define dom_document (js-document))
 (define dom_range (call! dom_document.createRange '()))
 
-(define frag (call! dom_range.createContextualFragment html2))
+(js-log "here 2")
+
+(define input-value (html# html-input))
+
+(define frag (call! dom_range.createContextualFragment (get! input-value.value)))
 
 ;(define frag_childNodes (js-ref frag "childNodes"))
 
@@ -176,14 +235,15 @@
 
 
 (define helpers-from-dom (convert-to-helpers-df frag_root))
+
 (define os (open-output-string))
-(write helpers-from-dom os)
-(define helper-output-string (get-output-string os))
+(write helpers-from-dom os)))
+(define helper-output-string
+  (get-output-string os))
+   
+(assign! converted_to_helpers helper-output-string)
 
-(assign! global.converted_to_helpers helper-output-string)
-
-(define reverse-output-display (html# reverse-output-display))
-(assign! reverse-output-display.value helper-output-string)
+(assign! |#reverse-output-display|.value helper-output-string)
 
 ;      `(,(car sexps) ,@(or attlist '()) ,@(if (null? child-list) '() `((Children ,@child-list))))))))
 
