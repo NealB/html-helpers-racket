@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>IIS Windows</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-4.0.0.min.js" integrity="sha256-OaVG6prZf4v69dPg6PhVattBXkcOWQB62pdZ3ORyrao=" crossorigin="anonymous"></script>
+
+<script src="tau-prolog.js"></script>
+
+<script type="text-prolog" id="html_helpers.pl" src="html_helpers_web.pl">
+</script>
+
+
+<script type="text/javascript" defer>
+
+let session;
+
+//print_query_list = function (text) {
+//	$('<code>').html(text).appendTo('#query-list');
+//};
+
+
+print_query_list_raw = function (html) {
+	//console.log(`arguments->`, arguments);
+	$('<div>').html(html).css('margin-bottom', '3px').appendTo('#query-list');
+};
+
+
+print_query_list = function (text) {
+	//console.log(`arguments->`, arguments);
+	$('<div>').text(text).css('margin-bottom', '3px').appendTo('#query-list');
+};
+
+print_query_list_error = function (text) {
+	$('<div>').addClass('text-danger').html(text).appendTo('#query-list');
+};
+
+add_query_to_localStorage = function(query) {
+	const qHist = JSON.parse(localStorage.queryHistory);
+	const index = qHist.indexOf(query);
+	if(index >= 0) {
+		qHist.splice(index, 1);
+	}
+	qHist.push(query);
+	localStorage.queryHistory = JSON.stringify(qHist);
+
+	const $matching = $('#query-history option').filter(function() {
+			return $(this).text() === query;
+		}).remove();
+
+	$('<option>').attr('value', query).text(query).appendTo('#query-history');
+};
+
+run_query = async function(query) {
+	try {
+		console.log(`running query: ${query}`);
+
+		add_query_to_localStorage(query);
+
+		await session.promiseQuery(query);
+		for await (let answer of session.promiseAnswers()) {
+			console.log(`${query} ---> format answer: ${session.format_answer(answer)}`);
+
+			//console.log(`unformatted answer:`, answer);
+			window.lastAnswer = answer;
+			for(let varName of Object.keys(answer.links)) {
+				print_query_list(`${varName} = ${answer.links[varName].toString()}`);
+			}
+			if(Object.keys(answer.links).length > 1) {
+				print_query_list_raw(`&nbsp;`);
+			}
+			//break;
+		}
+	}
+	catch(e) {
+		print_query_list_error(e.toString());
+		console.error(e.toString());
+		window.lastException = e;
+	}
+	const queries = document.getElementById('queries');
+	queries.scrollTo(0, queries.scrollHeight);
+};
+
+// enter_query_clicked = async function(query) {
+// 	console.log('click');
+// 	//const query = $('input[name="enter-query"]').val();
+// 	//await run_query(query);
+// 	$('#query-list').append(`<code>${query}</code>`);
+// 	$('input[name="enter-query"]').val('');
+// };
+
+(async function() {
+	const html_helpers = await $.get('html_helpers_www.pl');
+
+	$('#output').text(html_helpers);
+
+	// Create session
+	session = pl.create(1000);
+	// Consult program
+	//session.consult(getElementById("html_helpers");
+	try {
+
+		await session.promiseConsult(html_helpers);
+
+	}
+	catch(e) {
+		console.error(e.toString());
+	}
+	try {
+		//console.log(`Running init:`);
+		await session.promiseQuery("init.");
+
+		for await (let answer of session.promiseAnswers())
+			console.log(`init said: ${session.format_answer(answer)}`);
+	}
+	catch(e) {
+		console.error(e && e.toString());
+	}
+})();
+
+$(function() {
+	if(!localStorage.queryHistory) {
+		localStorage.queryHistory = '[]';
+	}
+	else {
+		const qHist = JSON.parse(localStorage.queryHistory);
+		for(let item of qHist) {
+			$('<option>').attr('value', item).text(item).appendTo('#query-history');
+			
+		}
+	}
+});
+
+
+</script>
+
+<!-- 
+% init/0
+% Initilize the game
+init :-
+	get_by_id(form_container, FormContainer),
+	create(form, BuildingForm),
+	set_attr(BuildingForm, action, /),
+	set_attr(BuildingForm, method, post),
+	append_child(FormContainer, BuildingForm),
+	
+	create(button, SubmitButton),
+	set_attr(SubmitButton, type, button),
+	set_html(SubmitButton, 'Save'),
+	append_child(BuildingForm, SubmitButton),
+	bind(SubmitButton, click, _, (
+		add_class(BuildingForm, button_was_clicked)
+	)).
+%
+	%get_by_id(doge, Doge),
+	%get_by_tag(body, Body),
+%	bind(Body, keyup, _, clear_controls),
+%	bind(Body, keydown, Event, (
+%		event_property(Event, key, Key),
+%		remark_control(Key),
+%		action(Doge, Key),
+%		prevent_default(Event)
+%	)). -->
+
+
+
+</head>
+<body>
+
+	<template id="email-tpl">
+		<div class="card">
+			<!-- <img class="card-img-top" src="/images/pathToYourImage.png" alt="Card image cap"> -->
+			<div class="card-body">
+				<h4 class="card-title">Card title</h4>
+				<p class="card-text">
+				Some quick example text to build on the card title
+				and make up the bulk of the card's content.
+				</p>
+				<a href="#!" class="btn btn-primary">Go somewhere</a>
+			</div>
+		</div>		
+	</template>
+
+	<div id="queries" style="height: 500px; overflow: auto; border: 1px black solid">
+		<pre
+		 style="font-family: monospace; padding: 4px; min-height: 100%"
+		 class="d-flex flex-column justify-content-end" id="query-list"></pre>
+	</div>
+
+	<form class="form-inline my-3" id="query-form">
+		<div class="input-group">
+			<div class="input-group-prepend">
+				<span class="input-group-text">?- </span>
+			</div>
+			<input type="text" class="form-control" style="width: 800px" name="enter-query" id="enter-query" value="" list="query-history" autocomplete="off"/>
+
+		</div>
+		<button type="submit" class="btn btn-success" id="run-query-button">Run Query</button>
+
+		<datalist id="query-history">
+		</datalist>
+	</form>
+
+	<div id="landing-zone">
+
+	</div>
+
+	<div id="pl-output">
+
+	</div>
+
+	<div id="container">
+		<pre style="border: 1px black solid; padding: 4px"><code class="html" id="output"></code></pre>
+	</div>
+</body>
+</html>

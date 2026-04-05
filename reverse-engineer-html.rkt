@@ -187,74 +187,82 @@
       node
       `(,(car node) ,@(cdr node))))
 
+(define (trim-all-ws str)
+  (define (ws-prefix-cnt)
+    (let loop ((cnt 0))
+      (if (or (= cnt (string-length str)) (not (char-whitespace? (string-ref str cnt))))
+          cnt
+          (loop (add1 cnt)))))
+  (define (ws-suffix-cnt)
+    (let loop ((cnt 0))
+      (if (not (char-whitespace? (string-ref str (- (string-length str) cnt 1))))
+          cnt
+          (loop (add1 cnt)))))
+  (define pre (ws-prefix-cnt))
+  (if (= pre (string-length str))
+      ""
+      (substring str pre (- (string-length str) (ws-suffix-cnt)))))
+  
+          
 
 (define (convert-to-helpers-df node)
   (define name (string-downcase (get! node.nodeName)))
   (if (equal? name "#text")
-      (get! node.textContent)
-      ;(if (eq? (car sexps) '&)
-      ;    sexps
-          (let* ((attributes (get! node.attributes))
-                 (attlist (for/list ((i (in-range 0 (get! attributes.length))))
-                            (define att (call! attributes.item i))
-                            (js-log att)
-                            (list (string->symbol (get! att.name)) (get! att.value))))
+      (let ((textContent (get! node.textContent)))
+        (trim-all-ws textContent))
+      (let* ((attributes (get! node.attributes))
+             (attlist (for/list ((i (in-range 0 (get! attributes.length))))
+                        (define att (call! attributes.item i))
+                        (js-log att)
+                        (list (string->symbol (get! att.name)) (get! att.value))))
 
-                 (childNodes (get! node.childNodes))
-                 (children (for/list ((i (in-range 0 (get! childNodes.length)))) (call! childNodes.item i)))
-                 (converted-children (map convert-to-helpers-df children))
-                 (child-list (map child-node-to-element converted-children)))
-            `(,(string->symbol name) ,@(or attlist '())
-                           ,@(cond
-                               ((null? child-list) '())
-                               ((string? child-list) child-list)
-                               (else child-list))))))
+             (childNodes (get! node.childNodes))
+             (children (for/list ((i (in-range 0 (get! childNodes.length)))) (call! childNodes.item i)))
+             (converted-children (map convert-to-helpers-df children))
+             (empty-strings-removed (filter (λ (el) (or (not (string? el)) (not (equal? el "")))) converted-children))
+             (child-list (map child-node-to-element empty-strings-removed)))
+        `(,(string->symbol name) ,@(or attlist '())
+                                 ,@(cond
+                                     ((null? child-list) '())
+                                     ((string? child-list) child-list)
+                                     (else child-list))))))
 
-(js-log** "here 1" html2)
-
-;(define html-input-value (html# html-input))
 
 (assign! |#html-input|.value html2)
 
-(define dom_document (js-document))
-(define dom_range (call! dom_document.createRange '()))
+(define (process-html-input-and-show)
+  (define dom_document (js-document))
+  (define dom_range (call! dom_document.createRange '()))
 
-(js-log "here 2")
+  (define html-input-element (html# html-input))
 
-(define input-value (html# html-input))
+  (define $html-input-value (get! html-input-element.value))
 
-(define frag (call! dom_range.createContextualFragment (get! input-value.value)))
+  (define frag (call! dom_range.createContextualFragment $html-input-value))
 
-;(define frag_childNodes (js-ref frag "childNodes"))
+  (define frag_childNodes (get! frag.childNodes))
 
-(define frag_childNodes (get! frag.childNodes))
+  (define frag_root (call! frag_childNodes.item 0))
 
-(define frag_root (call! frag_childNodes.item 0))
-
-(assign! global.html_2_frag_root frag_root)
+  (assign! html_2_frag_root frag_root)
 
 
-(define helpers-from-dom (convert-to-helpers-df frag_root))
+  (define helpers-from-dom (convert-to-helpers-df frag_root))
 
-(define os (open-output-string))
-(write helpers-from-dom os)))
-(define helper-output-string
-  (get-output-string os))
+  (define os (open-output-string))
+  (write helpers-from-dom os)
+  (define helper-output-string
+    (get-output-string os))
    
-(assign! converted_to_helpers helper-output-string)
+  (assign! converted_to_helpers helper-output-string)
 
-(assign! |#reverse-output-display|.value helper-output-string)
 
-;      `(,(car sexps) ,@(or attlist '()) ,@(if (null? child-list) '() `((Children ,@child-list))))))))
+  (assign! |#html-input-rhs|.value helper-output-string))
 
-;(on-do! dom_document load _
-;          (define reverse-output-display (html# reverse-output-display))
- ;         (assign! reverse-output-display.innerText str)
-  ;        )
+(process-html-input-and-show)
 
-;(on-do! (html# convert-helper-string) click _
-;        (define reverse-output-display (html# reverse-output-display))
-;        (assign! reverse-output-display.value helper-output-string))
+(on-do! (html# html-input) input _
+        (process-html-input-and-show))
         
 ;(define (reverse-engineer html)
 ;  (define xexp (html->xexp html))

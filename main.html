@@ -356,6 +356,8 @@ const audio_impl = {
   'context-create-stereo-panner': (ctx => ctx.createStereoPanner()),
   'context-create-buffer': ((ctx, channels, length, sampleRate) =>
     ctx.createBuffer(from_fasl(channels), from_fasl(length), from_fasl(sampleRate))),
+  'context-create-periodic-wave': ((ctx, real, imag) =>
+    ctx.createPeriodicWave(from_fasl(real), from_fasl(imag))),
   'context-decode-audio-data': ((ctx, data) => ctx.decodeAudioData(from_fasl(data))),
   'node-context': (node => node.context),
   'node-connect': ((node, destination, outputIndex, inputIndex) => {
@@ -1671,7 +1673,60 @@ var imports = {
     } : new Proxy({}, { get() { throw new Error('DOM not available in this environment'); } }),
     // Performance
     'performance': hasDOM ? {
-        'now':                 (() => performance.now())
+        'event-counts':        (() => performance.eventCounts),
+        'interaction-count':   (() => performance.interactionCount),
+        'memory':              (() => performance.memory),
+        'time-origin':         (() => performance.timeOrigin),
+        'now':                 (() => performance.now()),
+        'clear-marks':         ((markName) => {
+            const n = from_fasl(markName);
+            if (n === undefined) {
+                performance.clearMarks();
+            } else {
+                performance.clearMarks(n);
+            }
+        }),
+        'clear-measures':      ((measureName) => {
+            const n = from_fasl(measureName);
+            if (n === undefined) {
+                performance.clearMeasures();
+            } else {
+                performance.clearMeasures(n);
+            }
+        }),
+        'clear-resource-timings': (() => performance.clearResourceTimings()),
+        'get-entries':         (() => performance.getEntries()),
+        'get-entries-by-name': ((name, entryType) => {
+            const t = from_fasl(entryType);
+            if (t === undefined) {
+                return performance.getEntriesByName(from_fasl(name));
+            } else {
+                return performance.getEntriesByName(from_fasl(name), t);
+            }
+        }),
+        'get-entries-by-type':  ((entryType) => performance.getEntriesByType(from_fasl(entryType))),
+        'mark':                ((name, options) => {
+            const o = from_fasl(options);
+            if (o === undefined) {
+                return performance.mark(from_fasl(name));
+            } else {
+                return performance.mark(from_fasl(name), o);
+            }
+        }),
+        'measure':             ((name, startOrOptions, endMark) => {
+            const s = from_fasl(startOrOptions);
+            const e = from_fasl(endMark);
+            if (s === undefined && e === undefined) {
+                return performance.measure(from_fasl(name));
+            } else if (e === undefined) {
+                return performance.measure(from_fasl(name), s);
+            } else {
+                return performance.measure(from_fasl(name), s, e);
+            }
+        }),
+        'measure-user-agent-specific-memory': (() => performance.measureUserAgentSpecificMemory()),
+        'set-resource-timing-buffer-size': ((size) => performance.setResourceTimingBufferSize(size)),
+        'to-json':             (() => performance.toJSON())
     } : new Proxy({}, { get() { throw new Error('DOM not available in this environment'); } }),
     'websocket': websocket,
     'audio': audio,

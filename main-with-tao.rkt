@@ -31,6 +31,27 @@ END
 END
   )
 
+(define tau-html
+#<<END
+<!-- Program -->
+<textarea class="example-textinput example-program" id="program">
+likes(sam, salad).
+likes(dean, pie).
+likes(sam, apples).
+likes(dean, whiskey).
+</textarea>
+
+<!-- Name -->
+<input class="example-textinput example-goal" type="text" id="name" onKeyup="changeName();" value="" placeholder="Enter a name" />
+
+<!-- Button -->
+<input class="example-button" type="button" value="See all likes" id="button" onClick="clickButton();" />
+
+<!-- Answers -->
+<div class="example-result" id="result"></div>
+
+END
+  )
 
 (define page-desc
   `(div
@@ -38,9 +59,22 @@ END
 
     (script .#prettier1 (src "https://unpkg.com/prettier@3.8.1/standalone.js"))
     (script .#prettier2 (src "https://unpkg.com/prettier@3.8.1/plugins/html.js"))
+
+    (script .#tau-prolog (src "tau-prolog.js"))
+    
+    ;(script .#rxjs (src "https://unpkg.com/rxjs@%5E7/dist/bundles/rxjs.umd.min.js"))
      
     (.container-fluid
      (h3 "Convert s-expressions to html")
+
+     (textarea .example-textinput .example-program .#program
+#<<END
+likes(sam, salad).
+likes(dean, pie).
+likes(sam, apples).
+likes(dean, whiskey).
+END
+)
 
      (input:text .example-textinput .example-goal .#name (onKeyup "changeName();") (value "") (placeholder "Enter a name"))
      (input:button .example-button (value "See all likes") .#button (onClick "clickButton();"))
