@@ -1,3 +1,4 @@
+(include-lib simple-pretty)
 (include/reader "webracket-util.rkt" read-syntax/skip-first-line)
 (include/reader "html-helpers-webracket.rkt" read-syntax/skip-first-line)
 (include/reader "sxml.rkt" read-syntax/skip-first-line)
@@ -31,6 +32,7 @@ END
 END
   )
 
+(js-log "here!!")
 
 (define page-desc
   `(div
@@ -38,13 +40,23 @@ END
 
     (script .#prettier1 (src "https://unpkg.com/prettier@3.8.1/standalone.js"))
     (script .#prettier2 (src "https://unpkg.com/prettier@3.8.1/plugins/html.js"))
-     
-    (.container-fluid
-     (h3 "Convert s-expressions to html")
 
-     (input:text .example-textinput .example-goal .#name (onKeyup "changeName();") (value "") (placeholder "Enter a name"))
-     (input:button .example-button (value "See all likes") .#button (onClick "clickButton();"))
-     
+    (script
+     (src "https://code.jquery.com/jquery-3.7.1.slim.min.js")
+     (integrity "sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=")
+     (crossorigin "anonymous"))
+
+  
+    (.container-fluid
+     (h3 "Convert chex s-expressions <-> html")
+
+     ;(input:text .example-textinput .example-goal .#name (onKeyup "changeName();") (value "") (placeholder "Enter a name"))
+     ;(input:button .example-button (value "See all likes") .#button (onClick "clickButton();"))
+
+     (.row .mt-5
+      (.col (h4 "Enter chex s-expressions on the left and see html on the right")))
+
+    
      (.row
       (.col
        (textarea
@@ -63,7 +75,10 @@ END
         (rows 10)
         )))
 
-     (.row
+     (.row .mt-5
+      (.col (h4 "Enter html on the left and see chex on the right")))
+
+     #;(.row
       (.col
        (button:button
         .btn.btn-success
@@ -81,14 +96,14 @@ END
         ,default-html))
 
       (.col
-       (textarea
+       (textarea 
         .southeast
         .form-control .#html-input-rhs
         (readonly "readonly")
-        (rows 10)
-        )))
+        (rows 10))))
      )))
 
+(js-log "here2!!")
 
 (define page-sxml
   (renderHtmlElement page-desc))
@@ -103,6 +118,9 @@ END
 
 (define body (js-document-body))
 (js-append-child! body content)
+
+
+(js-log "here2.1!!")
 
 (define (display-converted continuation)
   
@@ -127,7 +145,11 @@ END
     (call! format-result-promise.then (procedure->external continuation))    
     (void)))
 
+(js-log "here2.2!!")
+
 (include/reader "reverse-engineer-html.rkt" read-syntax/skip-first-line)
+
+(js-log "here2.3!!")
 
 (define prettier-loaded-count 0)
 
@@ -140,6 +162,8 @@ END
 
 ;(on-do! (html# convert-helper-string) click _
 ;        (display-converted write-output-display-value))
+
+(js-log "here3!!")
 
 (on-do! (html# helper-text-input) input _
         (display-converted write-output-display-value))

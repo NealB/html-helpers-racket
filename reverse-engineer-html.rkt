@@ -3,8 +3,8 @@
 ;(require "HtmlHelpersRacket.rkt")
 
 (define html1
-  "<!-- Modal -->
-<div class='modal' id='exampleModal' tabindex='-1' role='dialog' aria-labelledby='exampleModalLabel' aria-hidden='true'>
+  ;"<!-- Modal -->
+"<div class='modal' id='exampleModal' tabindex='-1' role='dialog' aria-labelledby='exampleModalLabel' aria-hidden='true'>
   <div class='modal-dialog' role='document'>
     <div class='modal-content'>
       <div class='modal-header'>
@@ -12,7 +12,7 @@
         <button type='button' class='close' data-dismiss='modal' aria-label='Close'>
           <span aria-hidden='true'>&times;</span>
         </button>
-      </div>
+      </div> <!-- Modal -->
       <div class='modal-body'>
         ...
       </div>
@@ -88,7 +88,7 @@
     </tbody>
 </table>")
 
-(assign! html_2 html2)
+;(assign! html_2 html2)
 
 (define-proc-external (html3)
      "<form>
@@ -138,7 +138,7 @@
      <button type='submit' class='btn btn-primary'>Sign in</button>
    </form>")
    
-
+(js-log "rev-eng1")
 
 (define (prune-blanks sexps)
   (for/list ([el (in-list sexps)]
@@ -154,6 +154,7 @@
       node
       `(,(car node) ,@(cdr node))))
 
+(js-log "rev-eng2")
 
 (define (convert-to-helpers sexps)
   (if (string? sexps)
@@ -203,17 +204,24 @@
       ""
       (substring str pre (- (string-length str) (ws-suffix-cnt)))))
   
-          
+(js-log "rev-eng3")  
 
 (define (convert-to-helpers-df node)
   (define name (string-downcase (get! node.nodeName)))
-  (if (equal? name "#text")
-      (let ((textContent (get! node.textContent)))
-        (trim-all-ws textContent))
+  ;(js-log** "node name=" (get! node.nodeName))
+  (cond
+    ((equal? name "#text")
+     (let ((textContent (get! node.textContent)))
+       (trim-all-ws textContent)))
+    ((equal? name "#comment")
+     "")
+    ((string-prefix? name "#")
+     (js-log** "got an unexpected node name:" name))
+    (else
       (let* ((attributes (get! node.attributes))
              (attlist (for/list ((i (in-range 0 (get! attributes.length))))
                         (define att (call! attributes.item i))
-                        (js-log att)
+                        ;(js-log att)
                         (list (string->symbol (get! att.name)) (get! att.value))))
 
              (childNodes (get! node.childNodes))
@@ -225,10 +233,28 @@
                                  ,@(cond
                                      ((null? child-list) '())
                                      ((string? child-list) child-list)
-                                     (else child-list))))))
+                                     (else child-list)))))))
+
+(js-log "rev-eng4")
+
+(define (convert-ext arg)
+  (let* ((helpers (convert-to-helpers-df arg))
+         (helpers-as-vector (list->vector helpers))
+         (helpers-ext (procedure->external (list->vector convert-to-helpers-df))))
+    helpers-ext))
+
+(js-log "rev-eng5")
+    
+;(assign! convert_to_helpers convert-ext)
 
 
-(assign! |#html-input|.value html2)
+(js-log "rev-eng6")
+    
+(assign! |#html-input|.value html1)
+
+
+(js-log "rev-eng7")
+    
 
 (define (process-html-input-and-show)
   (define dom_document (js-document))
@@ -249,15 +275,24 @@
 
   (define helpers-from-dom (convert-to-helpers-df frag_root))
 
+  ;(js-log "about to pretty-print")
+  
   (define os (open-output-string))
-  (write helpers-from-dom os)
+  (simple-pretty-write helpers-from-dom os)
   (define helper-output-string
     (get-output-string os))
-   
+
+  ;(js-log "here comes pretty output string:")
+  ;(js-log helper-output-string)
+
   (assign! converted_to_helpers helper-output-string)
 
+  
+  (assign! |#html-input-rhs|.value helper-output-string)
 
-  (assign! |#html-input-rhs|.value helper-output-string))
+  
+  )
+
 
 (process-html-input-and-show)
 
