@@ -221,8 +221,13 @@
       (let* ((attributes (get! node.attributes))
              (attlist (for/list ((i (in-range 0 (get! attributes.length))))
                         (define att (call! attributes.item i))
-                        ;(js-log att)
-                        (list (string->symbol (get! att.name)) (get! att.value))))
+                        
+                        (cond [(equal? (get! att.name) "name") (string->symbol (format "$~a" (get! att.value)))]
+                              [(equal? (get! att.name) "type") (string->symbol (format ":~a" (get! att.value)))]
+                              [(equal? (get! att.name) "id") (string->symbol (format ".#~a" (get! att.value)))]
+                              [(equal? (get! att.name) "class") (string->symbol (apply string-append (map (λ (el) (format ".~a" el)) (string-split (get! att.value)))))]
+                        
+                               [else (list (string->symbol (get! att.name)) (get! att.value))])))
 
              (childNodes (get! node.childNodes))
              (children (for/list ((i (in-range 0 (get! childNodes.length)))) (call! childNodes.item i)))
