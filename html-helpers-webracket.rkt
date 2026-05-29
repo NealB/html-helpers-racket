@@ -189,40 +189,66 @@
 
 
 
-(define (rewriteElementStep node)
-
-  (match node
-    ((list 'BS/Select atts ...)              `(select (class "form-control") ,@atts))
-    ((list 'BS/Hidden atts ...)              `(input (type "hidden") (class "form-control") ,@atts))
-    ((list 'BS/TextBox atts ...)             `(input (type "text") (class "form-control") ,@atts))
-    ((list 'BS/RadioButton atts ...)         `(input (type "radio") (class "form-control custom-control-input") ,@atts))
-    ((list 'BS/FormGroupRow atts ...)        `(BS/Row (class "form-group") ,@atts))
-    ((list 'BS/Row atts ...)                 `(div (class "row") ,@atts))
-    ((list 'BS/Col atts ...)                 `(div (class "col") ,@atts))
-    ((list 'BS/Container atts ...)           `(div (class "container") ,@atts))
-    ((list 'BS/TableFixedLayout atts ...)    `(table (class "table") (style "table-layout: fixed") ,@atts))
-        
-    ((list 'Element atts ...)                `(#:Finished ,@atts))
-    ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
-    ((list '& atts ...)                      `(#:Finished `& ,@atts))
-  
-    ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
-    ((list 'Option value text)                `(option (value ,value) ,text))
-
-    ((list
-      (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
-     #:when (not (null? class-id-list))
-     `(,tag ,@class-id-list ,@atts))
-  
-    ((list (? html_element_tag? tag) atts ...) `(Element (Tag ,(~a tag)) ,@atts))
-
-    (_ #f)))
+;; (define (rewriteElementStep node)
+;; 
+;;   (match node
+;;     ((list 'BS/Select atts ...)              `(select (class "form-control") ,@atts))
+;;     ((list 'BS/Hidden atts ...)              `(input (type "hidden") (class "form-control") ,@atts))
+;;     ((list 'BS/TextBox atts ...)             `(input (type "text") (class "form-control") ,@atts))
+;;     ((list 'BS/RadioButton atts ...)         `(input (type "radio") (class "form-control custom-control-input") ,@atts))
+;;     ((list 'BS/FormGroupRow atts ...)        `(BS/Row (class "form-group") ,@atts))
+;;     ((list 'BS/Row atts ...)                 `(div (class "row") ,@atts))
+;;     ((list 'BS/Col atts ...)                 `(div (class "col") ,@atts))
+;;     ((list 'BS/Container atts ...)           `(div (class "container") ,@atts))
+;;     ((list 'BS/TableFixedLayout atts ...)    `(table (class "table") (style "table-layout: fixed") ,@atts))
+;;         
+;;     ((list 'Element atts ...)                `(#:Finished ,@atts))
+;;     ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
+;;     ((list '& atts ...)                      `(#:Finished `& ,@atts))
+;;   
+;;     ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
+;;     ((list 'Option value text)                `(option (value ,value) ,text))
+;; 
+;;     ((list
+;;       (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
+;;      #:when (not (null? class-id-list))
+;;      `(,tag ,@class-id-list ,@atts))
+;;   
+;;     ((list (? html_element_tag? tag) atts ...) `(Element (Tag ,(~a tag)) ,@atts))
+;; 
+;;     (_ #f)))
 
 (define (rewriteElement node0)
   (define node (rewriteAbbrevAttrFacets (fillDefaultTag node0)))
     
   (let loop ((node-iteration node))
-    (define rewritten (rewriteElementStep node-iteration))
+    (define rewritten
+      (match node-iteration
+        ((list 'BS/Select atts ...)              `(select (class "form-control") ,@atts))
+        ((list 'BS/Hidden atts ...)              `(input (type "hidden") (class "form-control") ,@atts))
+        ((list 'BS/TextBox atts ...)             `(input (type "text") (class "form-control") ,@atts))
+        ((list 'BS/RadioButton atts ...)         `(input (type "radio") (class "form-control custom-control-input") ,@atts))
+        ((list 'BS/FormGroupRow atts ...)        `(BS/Row (class "form-group") ,@atts))
+        ((list 'BS/Row atts ...)                 `(div (class "row") ,@atts))
+        ((list 'BS/Col atts ...)                 `(div (class "col") ,@atts))
+        ((list 'BS/Container atts ...)           `(div (class "container") ,@atts))
+        ((list 'BS/TableFixedLayout atts ...)    `(table (class "table") (style "table-layout: fixed") ,@atts))
+        
+        ((list 'Element atts ...)                `(#:Finished ,@atts))
+        ((list 'Elements atts ...)               `(#:Finished ,@(map rewriteElement atts)))
+        ((list '& atts ...)                      `(#:Finished `& ,@atts))
+  
+        ((list 'Stylesheet atts ...)             `(link (rel "stylesheet") ,@atts))
+        ((list 'Option value text)                `(option (value ,value) ,text))
+
+        ((list
+          (app split-attribute-short-strings (list-rest tag class-id-list)) atts ...)
+         #:when (not (null? class-id-list))
+         `(,tag ,@class-id-list ,@atts))
+  
+        ((list (? html_element_tag? tag) atts ...) `(Element (Tag ,(~a tag)) ,@atts))
+
+        (_ #f)))    
 
     (cond
       [(and (pair? rewritten) (eq? (car rewritten) '#:Finished)) (cdr rewritten)]
